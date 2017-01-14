@@ -6,12 +6,16 @@
 
 require 'rubygems'
 require 'bundler/setup'
+
+# local code
 $:.push('.')
 require 'gosu'
 require 'coord'
 require 'polygon'
 require 'area'
+require 'free_line'
 
+# debug
 require 'pry'
 require 'pry-nav'
 
@@ -151,7 +155,7 @@ class GameWindow < Gosu::Window#{{{
 		@screen_w = 640
 		@screen_h = 480
 		super(@screen_w, @screen_h, false, 10)
-		self.caption = "Qixall"
+		self.caption = "Qixall editor"
 
 		@epais = LINEW
 		@grid = GRID
@@ -168,6 +172,12 @@ class GameWindow < Gosu::Window#{{{
 		@area_last_loaded = {}
 		@show_grid = true
 
+    @tool = :none
+    @all_tools = [ :none, :area, :free_line, :multi_line ]
+
+    # free lines
+    @flines = []
+    @current_line = nil
 	end#}}}
 
 	attr_reader :epais, :grid, :screen_h, :screen_w, :playground, :monster
@@ -191,13 +201,15 @@ class GameWindow < Gosu::Window#{{{
 		@playground.draw
 		@cursor.draw(mouse_x, mouse_y, ZOrder::Mouse)
 
-		# info
+		# view port
 		@font.draw("mouse pos: #{mouse_x}, #{mouse_y}", 10, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
 		@font.draw("grid: #{@grid}", 470, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
-		@font.draw("clic: #{@click}", 10, 10 + 1*15, ZOrder::UI, 1.0, 1.0, 0xffffff00)
-
 		@font.draw("area: #{@playground.area.size}", 230, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
+    # 2nd line
+		@font.draw("clic: #{@click}", 10, 10 + 1*15, ZOrder::UI, 1.0, 1.0, 0xffffff00)
+		@font.draw("tool: #{@tool}", 230, 25, ZOrder::UI, 1.0, 1.0, 0xffffff00)
 
+    # the area
 		@area_click.draw if @area_click
 
 		if @show_grid
@@ -211,6 +223,12 @@ class GameWindow < Gosu::Window#{{{
 				draw_line(@playground.tcorner.x, i, 0xFFbbbbbb, @playground.bcorner.x, i, 0xFFbbbbbb, ZOrder::Grid, mode=:default)
 			}
 		end
+
+    @flines.each {|l| l.draw }
+    if @current_line
+      draw_line(@current_line.x, @current_line.y, 0xFFAABBCC, mouse_x, mouse_y, 0xFFAABBCC,ZOrder::Lines, mode=:default)
+    end
+
 	end#}}}
 
 	def button_down(id)#{{{
@@ -227,28 +245,33 @@ class GameWindow < Gosu::Window#{{{
 		when Gosu::Button::KbF4
 			@grid -= 1
 		when Gosu::Button::MsLeft
-			# upon mouse click we are making a area
-			@click = Coord.new(mouse_x, mouse_y)
-			p = @click.snap(@grid)
-			lastp = @area_click.last
-			# check HV line…
-			if @area_click.size == 0 or (lastp and (p.x == lastp.x or p.y == lastp.y))
-				@area_click << p unless @area_click.points.include?(p)
-			end
-			puts "#{p}, click=#{@click}"
-			puts "#{@click} #{@playground.area.inside?(@click.x, @click.y)}"
+      @click = Coord.new(mouse_x, mouse_y)
+      do_tool
 		when Gosu::Button::MsRight
 			@area_click.empty!
 		else
 			# some keybord letter
 			case button_id_to_char(id)
+			when 'a'
+        # click area mode
+        tool_change(:area)
+			when 'f'
+        # click free_line mode
+        tool_change(:free_line)
+			when 'm'
+        # click multi free_line mode
+        tool_change(:multi_line)
 			when 'd'
-				if @area_click.size > 0
-					# dump the clicked area into a file
-					dump_area(@area_click, "data/area")
-				else
-					puts "no tail to dump"
-				end
+        if @tool == :area
+          if @area_click.size > 0
+            # dump the clicked area into a file
+            dump_area(@area_click, "data/area")
+          else
+            puts "no tail to dump"
+          end
+        else
+          puts "current tools is '#{@tool}'"
+        end
 			when 'l'
 				# load area
 				begin
@@ -256,7 +279,7 @@ class GameWindow < Gosu::Window#{{{
 				rescue RuntimeError
 					puts "#{$!} => ok unclosed area"
 				end
-			when '.' # v on bépo
+			when '.' # v on bépo on azerty layout
 				# test algorithm of polygon detection
 				if @area_click and @area_click.inside?(mouse_x, mouse_y)
 					puts "inside"
@@ -312,6 +335,57 @@ private
 		puts "dump_area	=> #{fname}"
 		File.open(fname, "w") { |f| area_ref.dump(f) }
 	end
+
+  def tool_change(new_tool)
+    if not @all_tools.include?(new_tool)
+      raise "invalid tool change '#{new_tool}'"
+    end
+
+    # do something with current tool
+    case @tool
+    when :area
+    when :free_line, :multi_line
+      @flines.clear
+      @current_line = nil
+    end
+
+    @tool = new_tool
+
+    self
+  end
+
+  def do_tool
+    p = @click.snap(@grid)
+
+    case @tool
+    when :area
+			# upon mouse click we are making a area
+			lastp = @area_click.last
+			# check HV line…
+			if @area_click.size == 0 or (lastp and (p.x == lastp.x or p.y == lastp.y))
+				@area_click << p unless @area_click.points.include?(p)
+			end
+			puts "#{p}, click=#{@click}"
+			puts "#{@click} #{@playground.area.inside?(@click.x, @click.y)}"
+    when :free_line
+      if @current_line
+        # end the current_line with the point
+        @flines << FreeLine.new(self, @current_line.dup, p)
+        @current_line = nil
+      else
+        @current_line = p
+      end
+    when :multi_line
+      if @current_line
+        # end the current_line with the point
+        @flines << FreeLine.new(self, @current_line.dup, p)
+        @current_line = p
+      else
+        @current_line = p
+      end
+    end
+  end
+
 end #}}}
 
 window = GameWindow.new
