@@ -53,7 +53,7 @@ class Line#{{{
 				          ZOrder::Lines, mode=:default)
 		self
 	end
-	
+
 end#}}}
 
 
