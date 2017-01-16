@@ -4,6 +4,8 @@
 
 # FreeLine handle a simple line set by two points.
 
+require 'coord'
+
 # needs to know the window to draw itself
 class FreeLine#{{{
 	def initialize(window, p1, p2)
