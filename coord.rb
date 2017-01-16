@@ -1,5 +1,9 @@
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
 # coding: utf-8
+#
+# class Coord - manipulate coordinate couple on Integer (x, y)
+#
+
 class Coord#{{{
 	def initialize(x,y)
 		@x, @y = x.to_i, y.to_i

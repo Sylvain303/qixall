@@ -14,6 +14,9 @@ require 'coord'
 require 'polygon'
 require 'area'
 require 'free_line'
+require 'playground'
+require 'monster'
+require 'grid'
 
 # debug
 require 'pry'
@@ -36,119 +39,7 @@ ANGLE = {
 MONSTER_IMG = "media/img/monster_round_fire.png"
 # }}}
 
-class Monster#{{{
-  def initialize(window)
-    @window = window
-    @image = Gosu::Image.new(@window, MONSTER_IMG, false)
-    @h = @image.height
-    @w = @image.width
 
-    @factor = 0.5
-    @h *= @factor
-    @w *= @factor
-    mid = Coord.new(@w / 2, @h / 2)
-    puts "monster image @w=#{@w}, @h1=#{@h}"
-
-    # velocity
-    @vel = Coord.new(1, 1)
-    @angle = 0.0
-    @rotate = 1.0
-    @border_area = @window.playground.area
-    @min, @max = @border_area.corners
-    @me = Coord.new((@min.x + @max.x) / 2, (@min.y + @max.y) / 2)
-
-    # a surrounding box
-    @b = Box.new(@window, @me - mid, @me + mid)
-  end
-
-  attr_reader :me
-  attr_accessor :factor
-
-  def start(area)
-    @area = area
-    @start = @area[0]
-    @x, @y = @start.x + @image.width, @start.y + @image.height
-    @speed = 4
-    # @angle = rand(360)
-  end
-
-  def draw
-    @image.draw_rot(@me.x, @me.y, ZOrder::Monster, @angle, 0.5, 0.5, @factor, @factor)
-    @window.draw_point(@me)
-    # draw bounding box
-    @b.draw
-  end
-
-  def move
-    @me.x += @vel.x
-    @me.y += @vel.y
-    @b.move_by(@vel)
-    @angle += @rotate
-    if @angle > 360.0
-      @angle = 0.0
-    end
-    if @angle < 0.0
-      @angle = 360.0
-    end
-
-    edge = @border_area.find_nearest_edge(@me.x, @me.y)
-    # @border_area.highlight = edge
-
-    v1, v2 = @border_area.get_edge(edge)
-
-    # collide with edge
-    if v1.x == v2.x # V
-      d = (@me.x - v1.x).abs
-      dir = :vertical
-    else # H
-      d = (@me.y - v1.y).abs
-      dir = :horizontal
-    end
-
-    if d < @h / 2
-      # collision
-      if dir == :vertical
-        velsign = @vel.x < 0 ? 1 : -1
-        @me.x = v1.x + (@w / 2 * velsign)
-        @vel.x = - @vel.x
-      else
-        velsign = @vel.y < 0 ? 1 : -1
-        @me.y = v1.y + (@h / 2 * velsign)
-        @vel.y = - @vel.y
-      end
-    end
-
-    self
-  end
-end#}}}
-
-class Playground#{{{
-  def initialize(window)
-    @window = window
-    @background_image = Gosu::Image.new(@window, "media/pokemon_2.png", true)
-    #@background_image = Gosu::Image.new(@window, "media/epoc-01.png", true)
-    #@background_image = Gosu::Image.new(@window, "media/monica.png", true)
-
-    # initialize with default playground
-    @area = Area.new(@window)
-    @area.read_file("data/playground0.txt")
-    @tcorner, @bcorner = @area.corners
-    @area.color = 0xFF4dd0bc
-  end
-  attr_reader :area, :tcorner, :bcorner
-
-  def color=(c)
-    @area.color = c
-  end
-
-  def draw
-    @background_image.draw(@tcorner.x, @tcorner.y, ZOrder::Background);
-    ## a test to highlight the nearest edge of the mouse pointer
-    #edge = @area.find_nearest_edge(@window.mouse_x, @window.mouse_y)
-    #@area.highlight = edge
-    @area.draw
-  end
-end#}}}
 
 class GameWindow < Gosu::Window#{{{
   def initialize#{{{
@@ -158,19 +49,16 @@ class GameWindow < Gosu::Window#{{{
     self.caption = "Qixall editor"
 
     @epais = LINEW
-    @grid = GRID
 
     @playground = Playground.new(self)
-
-    @monster = Monster.new(self)
-    @monster.start(@playground.area)
+    # @grid is unsing @window.playground at runtime for corners
+    @grid = Grid.new(self, GRID)
 
     @font = Gosu::Font.new(self, Gosu::default_font_name, 20)
     @cursor = Gosu::Image.new(self, "media/Cursor.png", false)
 
     @area_click = Area.new(self)
     @area_last_loaded = {}
-    @show_grid = true
 
     @tool = :none
     @all_tools = [ :none, :area, :free_line, :multi_line ]
@@ -203,34 +91,33 @@ class GameWindow < Gosu::Window#{{{
     @cursor.draw(mouse_x, mouse_y, ZOrder::Mouse)
 
     # view port
-    @font.draw("mouse pos: #{mouse_x}, #{mouse_y}", 10, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
-    @font.draw("grid: #{@grid}", 470, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
-    @font.draw("area: #{@playground.area.size}", 230, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
+    @font.draw("mouse pos: #{mouse_x}, #{mouse_y}", 10, 10,
+               ZOrder::UI, 1.0, 1.0, 0xffffff00)
+    @font.draw("grid: #{@grid}", 470, 10,
+               ZOrder::UI, 1.0, 1.0, 0xffffff00)
+    @font.draw("area: #{@playground.area.size}", 230, 10,
+               ZOrder::UI, 1.0, 1.0, 0xffffff00)
     # 2nd line
-    @font.draw("clic: #{@click}", 10, 10 + 1*15, ZOrder::UI, 1.0, 1.0, 0xffffff00)
-    @font.draw("tool: #{@tool}", 230, 25, ZOrder::UI, 1.0, 1.0, 0xffffff00)
+    @font.draw("clic: #{@click}", 10, 10 + 1*15,
+               ZOrder::UI, 1.0, 1.0, 0xffffff00)
+    @font.draw("tool: #{@tool}", 230, 25,
+               ZOrder::UI, 1.0, 1.0, 0xffffff00)
 
     # the area
     @area_click.draw if @area_click
 
-    if @show_grid
-      # http://www.ruby-doc.org/core-1.9.3/Numeric.html#method-i-step
-      # Vertical
-      @playground.tcorner.x.step(@playground.bcorner.x, @grid) { |i|
-        draw_line(i, @playground.tcorner.y, 0xFFbbbbbb, i, @playground.bcorner.y, 0xFFbbbbbb, ZOrder::Grid, mode=:default)
-      }
-      # Horizontal
-      @playground.tcorner.y.step(@playground.bcorner.y, @grid) { |i|
-        draw_line(@playground.tcorner.x, i, 0xFFbbbbbb, @playground.bcorner.x, i, 0xFFbbbbbb, ZOrder::Grid, mode=:default)
-      }
-    end
+    # the grid
+    @grid.draw
 
+    # free_line
     @flines.each {|l| l.draw }
     @active_lines.each {|fl| fl.each {|l| l.draw } }
 
     # draw in progess line
     if @current_line
-      draw_line(@current_line.x, @current_line.y, 0xFFAABBCC, mouse_x, mouse_y, 0xFFAABBCC,ZOrder::Lines, mode=:default)
+      draw_line(@current_line.x, @current_line.y, 0xFFAABBCC,
+                mouse_x, mouse_y, 0xFFAABBCC,
+                ZOrder::Lines, mode=:default)
     end
 
   end#}}}
@@ -243,11 +130,11 @@ class GameWindow < Gosu::Window#{{{
       read_area(@playground.area, "data/playground*.txt")
       i = @playground.area.size + rand(@playground.area.size)
     when Gosu::Button::KbF2
-      @show_grid = ! @show_grid
+      @grid.toggle
     when Gosu::Button::KbF3
-      @grid += 1
+      @grid.inc_step
     when Gosu::Button::KbF4
-      @grid -= 1
+      @grid.dec_step
     when Gosu::Button::MsLeft
       @click = Coord.new(mouse_x, mouse_y)
       do_tool
@@ -367,7 +254,7 @@ private
   end
 
   def do_tool
-    p = @click.snap(@grid)
+    p = @grid.snap_point(@click)
     puts "#{@click} #{p} #{@grid}"
 
     case @tool
