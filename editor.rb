@@ -4,12 +4,15 @@
 # Game editor only
 #
 
+require 'rmagick'
+
 require 'rubygems'
 require 'bundler/setup'
 
+require 'gosu'
+
 # local code
 $:.push('.')
-require 'gosu'
 require 'coord'
 require 'polygon'
 require 'area'
@@ -39,8 +42,6 @@ ANGLE = {
 MONSTER_IMG = "media/img/monster_round_fire.png"
 # }}}
 
-
-
 class GameWindow < Gosu::Window#{{{
   def initialize#{{{
     @screen_w = 640
@@ -51,6 +52,7 @@ class GameWindow < Gosu::Window#{{{
     @epais = LINEW
 
     @playground = Playground.new(self)
+
     # @grid is unsing @window.playground at runtime for corners
     @grid = Grid.new(self, GRID)
 
@@ -63,10 +65,11 @@ class GameWindow < Gosu::Window#{{{
     @tool = :none
     @all_tools = [ :none, :area, :free_line, :multi_line ]
 
+    @elements = []
+
     # free lines
     @flines = []
     @current_line = nil
-    @active_lines = []
   end#}}}
 
   attr_reader :epais, :grid, :screen_h, :screen_w, :playground, :monster
@@ -109,9 +112,14 @@ class GameWindow < Gosu::Window#{{{
     # the grid
     @grid.draw
 
-    # free_line
+    # objects in the editor
+    @elements.each {|e|
+        e.draw
+        if e.kind_of? Area
+          create_polygon(e).draw(0, 0, 0)
+        end
+    }
     @flines.each {|l| l.draw }
-    @active_lines.each {|fl| fl.each {|l| l.draw } }
 
     # draw in progess line
     if @current_line
@@ -139,13 +147,18 @@ class GameWindow < Gosu::Window#{{{
       @click = Coord.new(mouse_x, mouse_y)
       do_tool
     when Gosu::Button::KbSpace
+      # all to drawable elements
       case @tool
       when :multi_line, :free_line
-        @active_lines << @flines
+        @elements << FreeLineList.new(@flines)
         @flines = []
         @current_line = nil
-        tool_change(:none)
+      when :area
+        @area_click.close
+        @elements << @area_click
+        @area_click = Area.new(self)
       end
+      tool_change(:none)
     when Gosu::Button::MsRight
       @area_click.empty!
     else
@@ -244,7 +257,7 @@ private
     case @tool
     when :area
     when :free_line, :multi_line
-      @flines.clear
+      @flines = []
       @current_line = nil
     end
 
@@ -253,7 +266,7 @@ private
     self
   end
 
-  def do_tool
+  def do_tool#{{{
     p = @grid.snap_point(@click)
     puts "#{@click} #{p} #{@grid}"
 
@@ -284,7 +297,31 @@ private
         @current_line = p
       end
     end
+  end#}}}
+
+  def create_polygon(poly)
+    min, max = poly.find_min_max()
+
+    box_image = Magick::Image.new(max.x - min.x, max.y - min.y) {
+      self.background_color = 'transparent'
+    }
+
+    gc = Magick::Draw.new
+    gc.stroke('pink')
+    gc.fill('plum')
+    gc.stroke_width(@epais)
+
+    gc.polygon(*poly.to_a)
+    gc.draw(box_image)
+
+    image = Gosu::Image.new(box_image)
+
+    return image
   end
+
+  def polygon_image(vertices)
+  end
+
 
 end #}}}
 

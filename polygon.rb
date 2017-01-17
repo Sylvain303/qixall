@@ -1,7 +1,10 @@
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
 # coding: utf-8
 
-# class Polygon handle points into a polygon structure without graphical dependancies.
+# class Polygon: handle a set of points into a polygon structure
+#                without graphical dependancies.
+#
+# See area.rb of graphical drawing of polygons.
 
 require 'coord'
 
@@ -33,7 +36,7 @@ class Polygon
 		raise "point already in Polygon : #{p} => #{self}" if @points.include?(p)
 
 		# adapt 3 points lined up, remove middle point
-		if @points.size >= 2 and 
+		if @points.size >= 2 and
 			( (@points[-2].x == p.x and @points[-1].x == p.x) or
 			  (@points[-2].y == p.y and @points[-1].y == p.y) )
 			puts "line up point: replace last: #{@points[-1]} <= p=#{p}"
@@ -42,7 +45,7 @@ class Polygon
 			@points << p
 		end
 
-		#@x_max = p.x if p.x > @x_max 
+		#@x_max = p.x if p.x > @x_max
 		#@x_min = p.x if p.x < @x_min or @x_min == 0
 
 		#@y_max = p.y if p.y > @y_max
@@ -57,7 +60,7 @@ class Polygon
 
 		last = @points.pop
 		@closed = false
-		
+
 		last
 	end
 
@@ -84,7 +87,7 @@ class Polygon
 
 		found
 	end#}}}
-	
+
 	def each_edge
 		each_edge_with_index { |v1, v2| yield(v1, v2) }
 	end
@@ -109,10 +112,10 @@ class Polygon
 	def each
 		@points.each { |p| yield(p) }
 	end
-
 	alias each_points :each
 
 	def size
+    # number of points
 		@points.size
 	end
 
@@ -136,13 +139,13 @@ class Polygon
 		each_edge_with_index do |v1,v2, i1, i2|
 			#puts "#{i1}#{v1} => #{i2}#{v2}"
 			# motion H
-			next if motion.x != 0 && v1.y == v2.y 
+			next if motion.x != 0 && v1.y == v2.y
 			next if motion.x > 0  && v1.x < p.x
 			next if motion.x < 0  && v1.x > p.x
-			
+
 			# (1,0) : right
 			if motion.x > 0 && p.x < v1.x && ((v1.y <= p.y && p.y <= v2.y) or (v2.y <= p.y && p.y <= v1.y))
-				dx = v1.x - p.x 
+				dx = v1.x - p.x
 				if memo == nil || dx < memo
 						#puts " right hit #{v1} #{dx}"
 						memo = dx
@@ -150,10 +153,10 @@ class Polygon
 						next
 				end
 			end
-			
+
 			# (-1,0) : left
 			if motion.x < 0 && p.x > v1.x && ((v1.y <= p.y && p.y <= v2.y) or (v2.y <= p.y && p.y <= v1.y))
-				dx = p.x - v1.x 
+				dx = p.x - v1.x
 				if memo == nil || dx < memo
 						#puts " left hit #{v1} #{dx}"
 						memo = dx
@@ -163,13 +166,13 @@ class Polygon
 			end
 
 			# motion V
-			next if motion.y != 0 && v1.x == v2.x 
+			next if motion.y != 0 && v1.x == v2.x
 			next if motion.y > 0  && v1.y <  p.y
 			next if motion.y < 0  && v1.y >  p.y
 
 			# (0,1) : down
 			if motion.y > 0 && p.y < v1.y && ((v1.x <= p.x && p.x <= v2.x) or (v2.x <= p.x && p.x <= v1.x))
-				dy = v1.y - p.y 
+				dy = v1.y - p.y
 				if memo == nil || dy < memo
 						#puts " down hit #{v1} #{dy}"
 						memo = dy
@@ -177,10 +180,10 @@ class Polygon
 						next
 				end
 			end
-			
+
 			# (0,-1) : up
 			if motion.y < 0 && p.y > v1.y && ((v1.x <= p.x && p.x <= v2.x) or (v2.x <= p.x && p.x <= v1.x))
-				dy = p.y - v1.y 
+				dy = p.y - v1.y
 				if memo == nil || dy < memo
 						#puts " up hit #{v1} #{dy}"
 						memo = dy
@@ -297,7 +300,7 @@ class Polygon
 		#puts "y_min=#{y < @y_min}"
 		#puts "x_max=#{x > @x_max}"
 		#puts "y_max=#{y > @y_max}"
-		
+
 		raise PolygonError, "Polygon not closed" if ! @closed
 
 		cn = 0
@@ -313,14 +316,14 @@ class Polygon
 					#puts "on edge"
 					return match_edge
 				end
-				
+
 				# don't test horizontal edge
 				if v1.y == v2.y
 					#puts " H"
 					next
 				end
 
-				if v1.y <= y && y <  v2.y or # upward crossing 
+				if v1.y <= y && y <  v2.y or # upward crossing
 					 v2.y <= y && y <  v1.y    # downward crossing
 
 					if x < v1.x
@@ -328,14 +331,14 @@ class Polygon
 					end
 				end
 
-				#puts " V #{cn}" 
+				#puts " V #{cn}"
 			end
 		#end
 
 		#puts "Fin #{cn}"
 		return cn % 2 == 1 ? true : false # 0 if even => out, 1 if odd => in
 	end#}}}
-	
+
 	def zoom(factor)#{{{
 		pol = Polygon.new
 
@@ -353,8 +356,8 @@ class Polygon
 	end#}}}
 
 	def translate(x, y)
-		@points.each { |p| 
-			p.x += x 
+		@points.each { |p|
+			p.x += x
 			p.y += y
 		}
 		self
@@ -393,7 +396,7 @@ class Polygon
 		# the other polygon is build with
 		# 1. all the tail points
 		# 2. the area points from where the tail ends in reverse order throught where the tail starts
-		
+
 		# test swaping start_edge > end_edge{{{
 		if start_edge > end_edge
 			puts "swapped #{end_edge} => #{start_edge}" if @debug
@@ -413,9 +416,9 @@ class Polygon
 				tail.points.reverse!
 			end
 		end
-		
+
 		# }}}
-		
+
 		pol1_end = start_edge
 		pol1_start = end_edge + 1
 		pol2_start = pol1_end + 1 # == start_edge + 1   pol2 works reversed !!
@@ -462,7 +465,7 @@ class Polygon
 				 pol2_start_tail += 1
 			end
 		end
-			
+
 		if start_edge !=  end_edge && tail[0] == @points[end_edge]
 			raise "on_corner tail 0 end_edge is it possible??"
 		end
@@ -473,7 +476,7 @@ class Polygon
 		#}}}
 
 		#  end_edge {{{
-		if @points[end_edge] == tail[-1] 
+		if @points[end_edge] == tail[-1]
 			puts "on_corner tail -1 => end_edge" if @debug
 			pol2_end -= 1
 			if tail[-2].x == @points[pol1_start].x && @points[pol1_start].x == tail[-1].x or
@@ -502,8 +505,8 @@ class Polygon
 				 pol2_end_tail -= 1
 			end
 		end
-			
-		if start_edge != end_edge && @points[start_edge] == tail[-1] 
+
+		if start_edge != end_edge && @points[start_edge] == tail[-1]
 			raise "on_corner tail -1 start_edge is it possible??"
 		end
 
@@ -544,7 +547,14 @@ class Polygon
 
 	def load(iostream)
 		iostream.each_line do |l|
-			next if l =~ /^(#|\s*$)/
+      begin
+        next if l =~ /^(#|\s*$)/
+      rescue ArgumentError => e
+        puts "line pasing error '#{e}, ignoring : #{l}"
+        next
+      end
+
+      # Match but not required
 			next if l =~ /Polygon:/
 			self << Coord.load(l)
 		end
@@ -562,7 +572,45 @@ class Polygon
 		s
 	end
 
-protected 
+  # find min and max points
+  def find_min_max(shift_coord=nil)
+    min = Coord.new(-1, -1)
+    max = Coord.new(-1, -1)
+		@points.each { |p|
+      if min.x == -1 or min.x > p.x
+        min.x = p.x
+      end
+      if min.y == -1 or min.y > p.y
+        min.y = p.y
+      end
+
+      if max.x == -1 or max.x < p.x
+        max.x = p.x
+      end
+      if max.y == -1 or max.y < p.y
+        max.y = p.y
+      end
+
+		}
+
+    if shift_coord.nil?
+      return min, max
+    else
+      return min - shift_coord, max - shift_coord
+    end
+  end
+
+  # convert polygon to an array of all coordinate x and y
+  def to_a
+    a = @points.collect {|p| [p.x, p.y] }
+    if @closed
+      a << @points.first.x
+      a << @points.first.y
+    end
+    return a
+  end
+
+protected
 	attr_reader :points
 
 end

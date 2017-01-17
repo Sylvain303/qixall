@@ -31,4 +31,20 @@ class FreeLine#{{{
 	end
 end#}}}
 
+class FreeLineList
+  def initialize(elm=nil)
+    @flines = []
+    if not elm.nil?
+      @flines.push(*elm)
+    end
+  end
+
+  def <<(fline)
+    @flines << fline
+  end
+
+  def draw
+    @flines.each {|l| l.draw }
+  end
+end
 

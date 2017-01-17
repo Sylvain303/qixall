@@ -1,6 +1,9 @@
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
+# coding: utf-8
+#
+# class Area: extends Polygon offering graphical rendering
+#
 
-# class Area extend Polygon offering graphical rendering
 require 'polygon'
 require 'line'
 
@@ -25,7 +28,8 @@ class Area < Polygon #{{{
 	end
 
 	def draw
-		# draw the only point, each_edge_with_index will iterate with 2 or more points
+    # draw when only one single point
+    # each_edge_with_index will iterate with 2 or more points
 		if @points.size == 1
 			@window.draw_point(@points[0])
 			return
@@ -151,7 +155,9 @@ class Area < Polygon #{{{
 	end
 end#}}}
 
-class Box
+# class Box is a simplier Polygon of 4 coord, defined by its top_left
+# and bottom_right corner
+class Box#{{{
 	# p1 ------------------------ p2
 	#  |                           |
 	#  |                           |
@@ -208,5 +214,5 @@ class Box
 		Line.new(@window, @p3, @p4).draw
 		Line.new(@window, @p4, @p1).draw
 	end
-end
+end#}}}
 
