@@ -602,7 +602,7 @@ class Polygon
 
   # convert polygon to an array of all coordinate x and y
   def to_a
-    a = @points.collect {|p| [p.x, p.y] }
+    a = @points.collect {|p| [p.x, p.y] }.flatten
     if @closed
       a << @points.first.x
       a << @points.first.y

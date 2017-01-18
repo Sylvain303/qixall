@@ -3,6 +3,7 @@
 #
 # Game editor only
 #
+# vimF12: ruby editor.rb
 
 require 'rmagick'
 
@@ -26,7 +27,7 @@ require 'pry'
 require 'pry-nav'
 
 module ZOrder
-  Background, Monster, Grid, Lines, UI, Mouse = *0..20
+  Background, Monster, Grid, Lines, Polygon, UI, Mouse = *0..20
 end
 
 # Config# {{{
@@ -70,6 +71,14 @@ class GameWindow < Gosu::Window#{{{
     # free lines
     @flines = []
     @current_line = nil
+
+    @hide_polygon = false
+    @xoff = 0
+    @yoff = 0
+
+    # button management
+    @shift_pressed = false
+    @zorder_ploygon = 0
   end#}}}
 
   attr_reader :epais, :grid, :screen_h, :screen_w, :playground, :monster
@@ -105,6 +114,8 @@ class GameWindow < Gosu::Window#{{{
                ZOrder::UI, 1.0, 1.0, 0xffffff00)
     @font.draw("tool: #{@tool}", 230, 25,
                ZOrder::UI, 1.0, 1.0, 0xffffff00)
+    @font.draw("xoff: #{@xoff}, yoff: #{@yoff}", 357, 25,
+               ZOrder::UI, 1.0, 1.0, 0xffffff00)
 
     # the area
     @area_click.draw if @area_click
@@ -115,8 +126,10 @@ class GameWindow < Gosu::Window#{{{
     # objects in the editor
     @elements.each {|e|
         e.draw
-        if e.kind_of? Area
-          create_polygon(e).draw(0, 0, 0)
+        if e.kind_of? Area and ! @hide_polygon
+          create_polygon(e).draw(e[0].x + @xoff,
+                                 e[0].y + @yoff,
+                                 ZOrder::Polygon + @zorder_ploygon)
         end
     }
     @flines.each {|l| l.draw }
@@ -130,8 +143,17 @@ class GameWindow < Gosu::Window#{{{
 
   end#}}}
 
+  def button_up(id)
+    case id
+    when Gosu::Button::KbLeftShift, Gosu::Button::KbRightShift
+      @shift_pressed = false
+    end
+  end
+
   def button_down(id)#{{{
     case id
+    when Gosu::Button::KbLeftShift, Gosu::Button::KbRightShift
+      @shift_pressed = true
     when Gosu::Button::KbEscape
       close
     when Gosu::Button::KbF1
@@ -162,8 +184,8 @@ class GameWindow < Gosu::Window#{{{
     when Gosu::Button::MsRight
       @area_click.empty!
     else
-      # some keybord letter
-      case button_id_to_char(id)
+      # some keyboard letter
+      case button_id_to_char(id)#{{{
       when 'a'
         # click area mode
         tool_change(:area)
@@ -202,7 +224,28 @@ class GameWindow < Gosu::Window#{{{
         @monster.factor += 0.1
       when '+'
         @monster.factor -= 0.1
-      end
+      when 'h'
+        # toggle hide_polygon
+        @hide_polygon = ! @hide_polygon
+      when 'x'
+        if @shift_pressed
+          @xoff -= 1
+        else
+          @xoff += 1
+        end
+      when 'y'
+        if @shift_pressed
+          @yoff -= 1
+        else
+          @yoff += 1
+        end
+      when 'p'
+        if @shift_pressed
+          @zorder_ploygon -= 1
+        else
+          @zorder_ploygon += 1
+        end
+      end#}}}
     end
   end#}}}
 
@@ -301,28 +344,32 @@ private
 
   def create_polygon(poly)
     min, max = poly.find_min_max()
+    p = poly.dup.translate(-min.x, -min.y)
 
-    box_image = Magick::Image.new(max.x - min.x, max.y - min.y) {
-      self.background_color = 'transparent'
+    w, h = max.x - min.x,  max.y - min.y
+
+    #puts "min=#{min}, max=#{max} Magick::Image.new(#{w}, #{h})"
+    #p.to_a.each_with_index {|c, i|
+    #  puts "#{i}: #{c}"
+    #}
+
+    img = Magick::Image.new(w + @epais * 2, h + @epais * 2) {
+      self.background_color = "transparent"
     }
 
     gc = Magick::Draw.new
-    gc.stroke('pink')
-    gc.fill('plum')
-    gc.stroke_width(@epais)
 
-    gc.polygon(*poly.to_a)
-    gc.draw(box_image)
+    gc.fill_opacity(0)
+    gc.fill('blue')
 
-    image = Gosu::Image.new(box_image)
+    gc.polyline(*p.to_a)
+
+    gc.draw(img)
+
+    image = Gosu::Image.new(img)
 
     return image
   end
-
-  def polygon_image(vertices)
-  end
-
-
 end #}}}
 
 window = GameWindow.new
