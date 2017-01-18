@@ -1,20 +1,20 @@
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
 
-$:.push(File.expand_path(File.dirname(__FILE__) + '/..'))
-require 'area'
-
 require 'test/unit'
 require 'stringio'
+
+$:.push(File.expand_path(File.dirname(__FILE__) + '/..'))
+require 'area'
 
 class TC_Area < Test::Unit::TestCase
 	def setup
 		@area = Area.new(nil)
-		@area.read_file("test/area0.txt")
+		@area.read_file("./area0.txt")
 	end
 
 	def test_load
 		area = Area.new(nil)
-		assert_raise(RuntimeError) { 	area.read_file("test/unclosed_area.txt") }
+		assert_raise(RuntimeError) { 	area.read_file("./unclosed_area.txt") }
 		assert(! area.closed)
 	end
 	def test_edge_out#{{{

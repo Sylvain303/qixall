@@ -1,7 +1,14 @@
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
+#
+# Test Polygon
+# File name are relative to test/ folder
+#
+
 require 'test/unit'
-require 'polygon'
 require 'stringio'
+
+$:.push(File.expand_path(File.dirname(__FILE__) + '/..'))
+require 'polygon'
 require 'ascii_buffer'
 
 class TC_Polygon < Test::Unit::TestCase
@@ -73,12 +80,12 @@ class TC_Polygon < Test::Unit::TestCase
 
 	def test_load# {{{
 		pol = nil
-		File.open("test/polygon.txt") { |f| pol = Polygon.load(f) }
+		File.open("./polygon.txt") { |f| pol = Polygon.load(f) }
 		assert_kind_of(Polygon, pol)
 		assert(! pol.closed)
 
 		pol2 = nil
-		assert_nothing_raised { File.open("test/polygon1.txt") { |f| pol2 = Polygon.load(f) } }
+		assert_nothing_raised { File.open("./polygon1.txt") { |f| pol2 = Polygon.load(f) } }
 		assert_kind_of(Polygon, pol2)
 	end# }}}
 
@@ -188,7 +195,7 @@ class TC_Polygon < Test::Unit::TestCase
 
 	def test_cut# {{{
 		pol2 = nil
-		File.open("test/polygon1.txt") { |f| pol2 = Polygon.load(f) }
+		File.open("./polygon1.txt") { |f| pol2 = Polygon.load(f) }
 		pol3 = pol2.dup
 		#pol2.debug = true
 
@@ -287,6 +294,21 @@ class TC_Polygon < Test::Unit::TestCase
 		assert_equal(14, np1.size)
 		assert_equal(4, np2.size)
 # }}}
+	end# }}}
+
+	def test_to_a# {{{
+		a_points = @pol2.to_a
+    assert_kind_of(Array, a_points)
+    # even number of points
+    assert_equal(0, a_points.size % 2)
+    if @pol2.closed
+      assert_equal((@pol2.size + 1) * 2, a_points.size)
+    else
+      assert_equal(@pol2.size * 2, a_points.size)
+    end
+    a_points.each {|p|
+      assert_kind_of(Integer, p)
+    }
 	end# }}}
 
 	def no_alligned_points?(pol)# {{{
