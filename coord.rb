@@ -10,9 +10,9 @@ class Coord#{{{
 	end
 	attr_accessor :x, :y
 
-	def long(autre, epais)
-		dx = (@x - autre.x).abs
-		dy = (@y - autre.y).abs
+	def long(other, epais)
+		dx = (@x - other.x).abs
+		dy = (@y - other.y).abs
 		if dx > dy
 			if dx  > epais
 				# long = dx
@@ -31,11 +31,11 @@ class Coord#{{{
 		Coord.new(dx, dy)
 	end
 
-	def +(autre)
-		Coord.new(@x + autre.x, @y + autre.y)
+	def +(other)
+		Coord.new(@x + other.x, @y + other.y)
 	end
-	def -(autre)
-		Coord.new(@x - autre.x, @y - autre.y)
+	def -(other)
+		Coord.new(@x - other.x, @y - other.y)
 	end
 	
 	def move_by(other)
@@ -54,13 +54,13 @@ class Coord#{{{
 		Coord.new(@x, @y)
 	end
 
-	def snap(epais)
-		dx = @x % epais
-		dy = @y % epais
+	def snap(gird_tickness)
+		dx = @x % gird_tickness
+		dy = @y % gird_tickness
 
 		if dx != 0
-			if dx - epais / 2 > 0
-				nx = @x + (epais -dx)
+			if dx - gird_tickness / 2 > 0
+				nx = @x + (gird_tickness -dx)
 			else
 				nx = @x - dx
 			end
@@ -69,8 +69,8 @@ class Coord#{{{
 		end	
 
 		if dy != 0
-			if dy - epais / 2> 0
-				ny = @y + (epais -dy)
+			if dy - gird_tickness / 2> 0
+				ny = @y + (gird_tickness -dy)
 			else
 				ny = @y - dy
 			end
@@ -97,9 +97,10 @@ class Coord#{{{
 		if l =~ /\((\d+),\s*(\d+)\)/
 			Coord.new($1, $2)
 		else
-			raise "Coord.load not found in :'#{l}'"
+			raise "Coord.load not found in string:'#{l}'"
 		end
 	end
+
 	def to_s
 		"(#@x,#@y)"
 	end
