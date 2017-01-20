@@ -14,7 +14,7 @@ class TC_Area < Test::Unit::TestCase
 
 	def test_load
 		area = Area.new(nil)
-		assert_raise(RuntimeError) { 	area.read_file("./unclosed_area.txt") }
+		assert_raise(PolygonError) { 	area.read_file("./unclosed_area.txt") }
 		assert(! area.closed)
 	end
 	def test_edge_out#{{{

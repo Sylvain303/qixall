@@ -3,6 +3,7 @@
 # Test Polygon
 # File name are relative to test/ folder
 #
+# vimF12: ruby test_polygon.rb
 
 require 'test/unit'
 require 'stringio'
@@ -52,7 +53,8 @@ class TC_Polygon < Test::Unit::TestCase
 	end# }}}
 
 	def assert_not_same_points(*pols)# {{{
-		return if pols.size == 1
+		return true if pols.size == 1
+
 		# test distinct points for each polygon: pol2, np1, np2
 		seen = {}
 		p1 = pols.first
@@ -78,14 +80,65 @@ class TC_Polygon < Test::Unit::TestCase
 		end
 	end# }}}
 
+	def no_alligned_points?(pol)# {{{
+    # SeeAlso: Polygon#close
+		pp = nil
+		r = true
+		pol.each_edge { |v1, v2|
+			#puts "#{pp} #{v1} #{v2}"
+
+			if ! pp
+				pp = v1
+				next
+			end
+
+			if pp.x == v2.x && v2.x == v1.x or pp.y == v2.y && v2.y == v1.y
+				r = false
+				break
+			end
+			pp = v1
+		}
+
+		r
+	end# }}}
+
+	def test_initialize# {{{
+		pol = Polygon.new
+    assert_equal(false, pol.closed)
+
+    c = Coord.new(2,22)
+		pol = Polygon.new(c)
+    assert_equal(c, pol[0])
+    assert_equal(false, pol.closed)
+    assert_equal(1, pol.size)
+
+    c2 = Coord.new(32,22)
+		pol = Polygon.new([c, c2])
+    assert_equal(false, pol.closed)
+
+		pol = Polygon.new(@pol2)
+    assert_equal(true, pol.closed)
+	end# }}}
+
 	def test_load# {{{
 		pol = nil
+    # simple square with UTF8 error in comment, ignored
 		File.open("./polygon.txt") { |f| pol = Polygon.load(f) }
 		assert_kind_of(Polygon, pol)
 		assert(! pol.closed)
+		assert_equal(4, pol.size)
+
+    # closed square
+		File.open("./polygon_square.txt") { |f| pol = Polygon.load(f) }
+		assert_kind_of(Polygon, pol)
+		assert(pol.closed)
 
 		pol2 = nil
-		assert_nothing_raised { File.open("./polygon1.txt") { |f| pol2 = Polygon.load(f) } }
+		assert_nothing_raised {
+      File.open("./polygon1.txt") { |f|
+        pol2 = Polygon.load(f)
+      }
+    }
 		assert_kind_of(Polygon, pol2)
 	end# }}}
 
@@ -183,15 +236,49 @@ class TC_Polygon < Test::Unit::TestCase
 
 	def test_zoom# {{{
 		p1 = @pol2[0]
-		pol = @pol2.zoom(10)
+    min, max = @pol2.find_min_max
 
+		pol = @pol2.zoom(10)
+    min2, max2 = pol.find_min_max
+    puts "min=#{min}, min2=#{min2}"
+
+    # unchanged p1 in both polygon
 		assert_equal(p1, pol[0])
+    # but not the same object
 		assert_not_same(p1, pol[0])
+
+    # properties are kept
 		assert_equal(@pol2.size, pol.size)
 		assert_equal(@pol2.closed, pol.closed)
 
 		assert_not_same(pol, @pol2)
+    # what about testing min/max
 	end# }}}
+
+  # after_cut_polygon_are_valid? : helper, avoid duplicate code
+  def after_cut_polygon_are_valid?(pol, np1, np1_expect, np2, np2_expect)
+		assert_not_same_points(pol, np1, np2)
+
+		assert(np1.closed)
+		assert(np2.closed)
+
+		assert_equal(np1_expect, np1.size)
+		assert_equal(np2_expect, np2.size)
+
+		assert(no_alligned_points?(np1), "aligned points np1") 
+		assert(no_alligned_points?(np2), "aligned points np2") 
+
+    # ensure mix and max are also in resulting polygons
+    min, max = np1.find_min_max
+    assert_equal(np1.min, min)
+    assert_equal(np1.max, max)
+
+    min, max = np2.find_min_max
+    assert_equal(np2.min, min)
+    assert_equal(np2.max, max)
+
+    true
+  end
 
 	def test_cut# {{{
 		pol2 = nil
@@ -211,7 +298,7 @@ class TC_Polygon < Test::Unit::TestCase
 		# }}}
 		
 		# test exception raise for unclosed polygon
-		assert_raise(PolygonError) { pol2.cut(t6, start_edge, end_edge) }
+		assert_raise { pol2.cut(t6, start_edge, end_edge) }
 
 		pol2.close
 		assert_equal(10, pol2.size)
@@ -222,14 +309,7 @@ class TC_Polygon < Test::Unit::TestCase
 		assert_not_same_points(pol2, np1, np2)
 		#print_pol(np1, np2.translate(1,1), pol3.close.translate(31, 0), t6.translate(30,0))
 
-		assert(np1.closed)
-		assert(np2.closed)
-
-		assert_equal(8, np1.size)
-		assert_equal(6, np2.size)
-
-		assert(no_alligned_points?(np1), "aligned points np1") 
-		assert(no_alligned_points?(np2), "aligned points np2") 
+    assert(after_cut_polygon_are_valid?(pol2, np1, 8, np2, 6))
 		# }}}
 
 		# single edge tail# {{{
@@ -244,10 +324,7 @@ class TC_Polygon < Test::Unit::TestCase
 
 		np1, np2 = pol2.cut(tail, start_edge, end_edge)
 
-		assert_equal(6, np1.size)
-		assert_equal(6, np2.size)
-		assert(no_alligned_points?(np1), "aligned points np1") 
-		assert(no_alligned_points?(np2), "aligned points np2") 
+    assert(after_cut_polygon_are_valid?(pol2, np1, 6, np2, 6))
 # }}}
 		
 		# some more test: single aligned cut between to verticaly aligned corner# {{{
@@ -262,8 +339,7 @@ class TC_Polygon < Test::Unit::TestCase
 		np1, np2 = pol2.cut(tail, start_edge, end_edge)
 		#print_pol(np1, np2.translate(1,0), pol3.close.translate(31, 0), tail.translate(30,0))
 
-		assert(no_alligned_points?(np1), "aligned points np1") 
-		assert(no_alligned_points?(np2), "aligned points np2") 
+    assert(after_cut_polygon_are_valid?(pol2, np1, 6, np2, 4))
 # }}}
 
 		# same edge + corner# {{{
@@ -274,25 +350,21 @@ class TC_Polygon < Test::Unit::TestCase
 		np1, np2 = pol2.cut(tail, start_edge, end_edge)
 		#print_pol(np1,np2.translate(1,1))
 		assert_not_same_points(pol2, np1, np2)
-		assert(no_alligned_points?(np1), "aligned points np1") 
-		assert(no_alligned_points?(np2), "aligned points np2") 
 
-		assert_equal(10, np1.size)
-		assert_equal(4, np2.size)
+    assert(after_cut_polygon_are_valid?(pol2, np1, 10, np2, 4))
 # }}}
 		
 		# same edge + no corner# {{{
-		tail = Polygon.new << Coord.new(pol2[6].x, pol2[6].y - 1) << Coord.new(pol2[6].x / 2, pol2[6].y - 1) <<
-		                      Coord.new(pol2[7].x / 2, pol2[7].y + 1) << Coord.new(pol2[7].x, pol2[7].y + 1)
+		tail = Polygon.new << Coord.new(pol2[6].x, pol2[6].y - 1) <<
+              Coord.new(pol2[6].x / 2, pol2[6].y - 1) <<
+		          Coord.new(pol2[7].x / 2, pol2[7].y + 1) <<
+              Coord.new(pol2[7].x, pol2[7].y + 1)
 		start_edge = 6
 		end_edge = 6
 		np1, np2 = pol2.cut(tail, start_edge, end_edge)
 		#print_pol(np1)#,np2.translate(3,0))
-		assert_not_same_points(pol2, np1, np2)
-		assert(no_alligned_points?(np1), "aligned points np1") 
-		assert(no_alligned_points?(np2), "aligned points np2") 
-		assert_equal(14, np1.size)
-		assert_equal(4, np2.size)
+
+    assert(after_cut_polygon_are_valid?(pol2, np1, 14, np2, 4))
 # }}}
 	end# }}}
 
@@ -311,25 +383,26 @@ class TC_Polygon < Test::Unit::TestCase
     }
 	end# }}}
 
-	def no_alligned_points?(pol)# {{{
-		pp = nil
-		r = true
-		pol.each_edge { |v1, v2|
-			#puts "#{pp} #{v1} #{v2}"
+	def test_find_min_max# {{{
+		min, max = @pol2.find_min_max
+    assert_kind_of(Coord, min)
 
-			if ! pp
-				pp = v1
-				next
-			end
+    a = @pol2.to_a
 
-			if pp.x == v2.x && v2.x == v1.x or pp.y == v2.y && v2.y == v1.y
-				r = false
-				break
-			end
-			pp = v1
-		}
+    xs = a.values_at(* a.each_index.select {|i| i.even?})
+    ys = a.values_at(* a.each_index.select {|i| i.odd?})
 
-		r
+    min_x = xs.min
+    min_y = ys.min
+
+    max_x = xs.max
+    max_y = ys.max
+    
+    assert_equal(Coord.new(min_x, min_y), min)
+    assert_equal(Coord.new(max_x, max_y), max)
+
+    # shift
+    min2, max2 = @pol2.find_min_max(min)
 	end# }}}
 
 end

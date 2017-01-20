@@ -127,8 +127,8 @@ class GameWindow < Gosu::Window#{{{
     @elements.each {|e|
         e.draw
         if e.kind_of? Area and ! @hide_polygon
-          create_polygon(e).draw(e[0].x + @xoff,
-                                 e[0].y + @yoff,
+          create_polygon(e).draw(e.min.x + @xoff,
+                                 e.min.y + @yoff,
                                  ZOrder::Polygon + @zorder_ploygon)
         end
     }

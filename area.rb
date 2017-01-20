@@ -50,27 +50,6 @@ class Area < Polygon #{{{
 		end
 	end
 
-	def close#{{{
-		# go through each points and add bounding boxes
-		#@points.each_index do |i|
-		#	n = next_corner(i + 1)
-		#	pp = leave(i, n)
-		#	b = Box.new(@points[pp], @points[n])
-
-		#	puts "Box:#{b}"
-		#end
-		
-		# ensure that the last point closes with the first point
-		sp = @points.at(0)
-		ep = @points.at(-1)
-		if sp.x != ep.x && sp.y != ep.y
-			raise "Area#close #{ep} => #{sp} wont close"
-		end
-			
-		super
-		self
-	end#}}}
-
 	# edge_out() return the symbol of the direction which let the player go inside the area#{{{
 	# out mean: near the monster, which is in fact inside the area
 	def edge_out(i1, i2)

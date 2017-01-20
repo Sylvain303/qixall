@@ -1,10 +1,11 @@
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
+#
 # coding: utf-8
-
+#
 # class Polygon: handle a set of points into a polygon structure
 #                without graphical dependancies.
 #
-# See area.rb of graphical drawing of polygons.
+# See area.rb for graphical drawing of polygons.
 
 require 'coord'
 
@@ -13,27 +14,36 @@ end
 
 class Polygon
 	def initialize(points = nil)#{{{
-		#@x_min = @x_max = @y_min = @y_max = 0
+    # store min and max internal coord, they are not necessarly on the
+    # polygon
+		@min = Coord.new(-1, -1)
+    @max = Coord.new(-1, -1)
+
 		@closed = false
 		@points = []
 
+    # if initialized with something else, points must contains Coord
 		if points.respond_to?(:each)
 			points.each { |p| self << p }
-			@closed = true
+      if points.respond_to?(:close)
+        close
+      end
 		else
 			self << points if points
 		end
 	end#}}}
 
-	attr_reader :closed
+	attr_reader :closed, :min, :max
 	attr_accessor :debug
 
-	def [](index)
+	def [](index)#{{{
 		@points.at(index)
-	end
+	end#}}}
 
 	def <<(p)#{{{
-		raise "point already in Polygon : #{p} => #{self}" if @points.include?(p)
+    if @points.include?(p)
+      raise PolygonError, "point already in Polygon : #{p} => #{self}"
+    end
 
 		# adapt 3 points lined up, remove middle point
 		if @points.size >= 2 and
@@ -45,34 +55,39 @@ class Polygon
 			@points << p
 		end
 
-		#@x_max = p.x if p.x > @x_max
-		#@x_min = p.x if p.x < @x_min or @x_min == 0
-
-		#@y_max = p.y if p.y > @y_max
-		#@y_min = p.y if p.y < @y_min or @y_min == 0
+    update_min_max!(p)
 		self
 	end#}}}
 
-	def pop
+
+	def pop#{{{
 		if @points.size == 0
-			raise "empty polygon"
+			raise PolygonError, "empty polygon"
 		end
 
 		last = @points.pop
 		@closed = false
 
+    # update min max
+    @min, @max = find_min_max
 		last
-	end
+	end#}}}
 
-	def close
+	def close#{{{
+		# ensure that the last point closes with the first point
+		sp, ep = @points[0], @points[-1]
+		if sp.x != ep.x and sp.y != ep.y
+			raise PolygonError, "points #{ep} => #{sp} wont close"
+		end
+
 		@closed = true
 		self
-	end
+	end#}}}
 
-	def reverse!
+	def reverse!#{{{
 		@points.reverse!
 		self
-	end
+	end#}}}
 
 	def find_nearest(val)#{{{
 		near = -1
@@ -88,9 +103,9 @@ class Polygon
 		found
 	end#}}}
 
-	def each_edge
+	def each_edge#{{{
 		each_edge_with_index { |v1, v2| yield(v1, v2) }
-	end
+	end#}}}
 
 	def each_edge_with_index#{{{
 		# loop over the closed Polygon 0 .. n + n,0
@@ -109,15 +124,15 @@ class Polygon
 		end
 	end#}}}
 
-	def each
+	def each#{{{
 		@points.each { |p| yield(p) }
-	end
+	end#}}}
 	alias each_points :each
 
-	def size
+	def size#{{{
     # number of points
 		@points.size
-	end
+	end#}}}
 
 	# find_next_edge() return the index of nearest edge in the given motion#{{{
 	# only work with player motion (x or y == 0)
@@ -144,7 +159,8 @@ class Polygon
 			next if motion.x < 0  && v1.x > p.x
 
 			# (1,0) : right
-			if motion.x > 0 && p.x < v1.x && ((v1.y <= p.y && p.y <= v2.y) or (v2.y <= p.y && p.y <= v1.y))
+			if motion.x > 0 && p.x < v1.x && ((v1.y <= p.y && p.y <= v2.y) or
+                                        (v2.y <= p.y && p.y <= v1.y))
 				dx = v1.x - p.x
 				if memo == nil || dx < memo
 						#puts " right hit #{v1} #{dx}"
@@ -155,7 +171,8 @@ class Polygon
 			end
 
 			# (-1,0) : left
-			if motion.x < 0 && p.x > v1.x && ((v1.y <= p.y && p.y <= v2.y) or (v2.y <= p.y && p.y <= v1.y))
+			if motion.x < 0 && p.x > v1.x && ((v1.y <= p.y && p.y <= v2.y) or
+                                        (v2.y <= p.y && p.y <= v1.y))
 				dx = p.x - v1.x
 				if memo == nil || dx < memo
 						#puts " left hit #{v1} #{dx}"
@@ -171,7 +188,8 @@ class Polygon
 			next if motion.y < 0  && v1.y >  p.y
 
 			# (0,1) : down
-			if motion.y > 0 && p.y < v1.y && ((v1.x <= p.x && p.x <= v2.x) or (v2.x <= p.x && p.x <= v1.x))
+			if motion.y > 0 && p.y < v1.y && ((v1.x <= p.x && p.x <= v2.x) or
+                                        (v2.x <= p.x && p.x <= v1.x))
 				dy = v1.y - p.y
 				if memo == nil || dy < memo
 						#puts " down hit #{v1} #{dy}"
@@ -182,7 +200,8 @@ class Polygon
 			end
 
 			# (0,-1) : up
-			if motion.y < 0 && p.y > v1.y && ((v1.x <= p.x && p.x <= v2.x) or (v2.x <= p.x && p.x <= v1.x))
+			if motion.y < 0 && p.y > v1.y && ((v1.x <= p.x && p.x <= v2.x) or
+                                        (v2.x <= p.x && p.x <= v1.x))
 				dy = p.y - v1.y
 				if memo == nil || dy < memo
 						#puts " up hit #{v1} #{dy}"
@@ -242,16 +261,16 @@ class Polygon
 		return edge
 	end#}}}
 
-	def on_edge(edge, x, y)
+	def on_edge(edge, x, y)#{{{
 		v1 = @points[edge]
 		v2 = @points[next_corner(edge)]
 
 		# bool detecting Vertical or Horizontal edge
 		return ( ( (v1.x == x && v2.x == v1.x) && (v1.y <= y && y <= v2.y or v2.y <= y && y <= v1.y) )  or #V
 			       ( (v1.y == y && v2.y == v1.y) && (v1.x <= x && x <= v2.x or v2.x <= x && x <= v1.x) )   ) #H
-	end
+	end#}}}
 
-	def edge_dir(start_edge, end_edge)
+	def edge_dir(start_edge, end_edge)#{{{
 		edge_dir = @points[end_edge] - @points[start_edge]
 		case
 		when edge_dir.x == 0 && edge_dir.y > 0
@@ -265,18 +284,19 @@ class Polygon
 		else
 			raise PolygonError, "invalide edge #{start_edge} => #{end_edge}"
 		end
-	end
+	end#}}}
 
-	# next_corner(index) : return the next index in @points looping to the start if needed
+	# next_corner(index) : return the next index in @points#{{{
+  # looping to the start if needed
 	def next_corner(old)
 		(old + 1 + @points.size) % @points.size
-	end
+	end#}}}
 
-	def prev_corner(old)
+	def prev_corner(old)#{{{
 		(old - 1 + @points.size) % @points.size
-	end
+	end#}}}
 
-	def get_edge(edge_index)
+	def get_edge(edge_index)#{{{
 		# return the pair of points forming the edge
 		nedge = next_corner(edge_index)
 		case edge_dir(edge_index, nedge)
@@ -286,21 +306,9 @@ class Polygon
 		when :down, :right
 			return @points[edge_index], @points[nedge]
 		end
-	end
+	end#}}}
 
 	def inside?(x, y, match_edge = true)#{{{
-		#puts "test inside #{x},#{y}"
-
-		#puts "x_min=#{@x_min}"
-		#puts "x_max=#{@x_max}"
-		#puts "y_min=#{@y_min}"
-		#puts "y_max=#{@y_max}"
-
-		#puts "x_min=#{x < @x_min}"
-		#puts "y_min=#{y < @y_min}"
-		#puts "x_max=#{x > @x_max}"
-		#puts "y_max=#{y > @y_max}"
-
 		raise PolygonError, "Polygon not closed" if ! @closed
 
 		cn = 0
@@ -311,8 +319,10 @@ class Polygon
 			each_edge do |v1,v2|
 
 				# detect if the point is on the edge itself
-				if ( (v1.x == x && v2.x == v1.x) && (v1.y <= y && y <= v2.y or v2.y <= y && y <= v1.y) )  or #V
-				   ( (v1.y == y && v2.y == v1.y) && (v1.x <= x && x <= v2.x or v2.x <= x && x <= v1.x) )     #H
+				if ( (v1.x == x && v2.x == v1.x) && (v1.y <= y && y <= v2.y or
+                                             v2.y <= y && y <= v1.y) )  or #V
+				   ( (v1.y == y && v2.y == v1.y) && (v1.x <= x && x <= v2.x or
+                                             v2.x <= x && x <= v1.x) )     #H
 					#puts "on edge"
 					return match_edge
 				end
@@ -342,43 +352,54 @@ class Polygon
 	def zoom(factor)#{{{
 		pol = Polygon.new
 
-		# compute the first point for translating to its old coordinate
+		# compute the first point for keeping the polygon to its old
+    # start coordinate
 		first = @points.first
 		n = Coord.new(first.x * factor, first.y * factor)
 		delta = n - first
 
 		# recompute all points
-		@points.each {|p| pol << Coord.new(p.x * factor - delta.x, p.y * factor - delta.y) }
+		@points.each_with_index {|p, i|
+      pol << Coord.new(p.x * factor - delta.x, p.y * factor - delta.y)
+    }
 
 		pol.close if @closed
 
 		return pol
 	end#}}}
 
-	def translate(x, y)
+	def translate(x, y)#{{{
 		@points.each { |p|
 			p.x += x
 			p.y += y
+      update_min_max!(p)
 		}
 		self
-	end
+	end#}}}
 
-	def dup
+	def dup#{{{
 		n = Polygon.new
 		n.replace!(self)
 		n.close if @closed
 
 		n
-	end
+	end#}}}
 
-	def replace!(pol)
+	def replace!(pol)#{{{
 		@points.clear
 		pol.each { |p| @points << p.dup }
 		@closed = pol.closed
 		self
-	end
+	end#}}}
 
-	def cut(tail, start_edge, end_edge)#{{{
+	# cut(tail, start_edge, end_edge) compute polygon cut with tail #{{{
+  # cut is used in player.rb when it reachs some other edge of the surrounding
+  # area. start_edge, end_edge, are index in the polygon @points.
+  #
+  # return 2 new polygons, from each side of the cutting polygon
+  # tail can be reversed.
+  # self is not modified.
+	def cut(tail, start_edge, end_edge)
 		raise PolygonError, "Polygon not closed" if ! @closed
 
 		raise "tail doesn't reach start_edge" if ! on_edge(start_edge, tail[0].x,  tail[0].y)
@@ -391,11 +412,13 @@ class Polygon
 		# process of linking the 2 polygon
 		# 1. add each point of the area from 0 to the point before the tail
 		# 2. add each point of the tail
-		# 3. close the area, by adding the point after the tail throught the end of the area
+    # 3. close the area, by adding the point after the tail throught the end of
+    #    the area
 		#
 		# the other polygon is build with
 		# 1. all the tail points
-		# 2. the area points from where the tail ends in reverse order throught where the tail starts
+		# 2. the area points from where the tail ends in reverse order throught
+    #    where the tail starts
 
 		# test swaping start_edge > end_edge{{{
 		if start_edge > end_edge
@@ -429,10 +452,14 @@ class Polygon
 		pol2_start_tail = 0
 		pol2_end_tail = tail.size - 1
 
-		puts "before: pol1_end=#{pol1_end} pol1_start=#{pol1_start}" if @debug
-		puts "before: pol2_start=#{pol2_start} pol2_end=#{pol2_end}" if @debug
-		puts "before: pol1_start_tail=#{pol1_start_tail} pol1_end_tail=#{pol1_end_tail}" if @debug
-		puts "before: pol2_start_tail=#{pol2_start_tail} pol2_end_tail=#{pol2_end_tail}" if @debug
+    if @debug
+      puts "before: pol1_end=#{pol1_end} pol1_start=#{pol1_start}"
+      puts "before: pol2_start=#{pol2_start} pol2_end=#{pol2_end}"
+      puts "before: pol1_start_tail=#{pol1_start_tail} " +
+        "pol1_end_tail=#{pol1_end_tail}"
+      puts "before: pol2_start_tail=#{pol2_start_tail} " +
+        "pol2_end_tail=#{pol2_end_tail}"
+    end
 
 		# test on_corner# {{{
 		# start_edge {{{
@@ -444,8 +471,10 @@ class Polygon
 
 				 pol1_start_tail += 1
 			end
-			if tail[0].x == @points[pol2_start].x && @points[pol2_start].x == tail[1].x or
-				 tail[0].y == @points[pol2_start].y && @points[pol2_start].y == tail[1].y
+			if tail[0].x == @points[pol2_start].x &&
+         @points[pol2_start].x == tail[1].x or
+				 tail[0].y == @points[pol2_start].y &&
+         @points[pol2_start].y == tail[1].y
 
 				 pol2_start_tail += 1
 			end
@@ -459,8 +488,10 @@ class Polygon
 
 				 pol1_start_tail += 1
 			end
-			if tail[0].x == @points[pol2_start].x && @points[pol2_start].x == tail[1].x or
-				 tail[0].y == @points[pol2_start].y && @points[pol2_start].y == tail[1].y
+			if tail[0].x == @points[pol2_start].x &&
+         @points[pol2_start].x == tail[1].x or
+				 tail[0].y == @points[pol2_start].y &&
+         @points[pol2_start].y == tail[1].y
 
 				 pol2_start_tail += 1
 			end
@@ -479,13 +510,17 @@ class Polygon
 		if @points[end_edge] == tail[-1]
 			puts "on_corner tail -1 => end_edge" if @debug
 			pol2_end -= 1
-			if tail[-2].x == @points[pol1_start].x && @points[pol1_start].x == tail[-1].x or
-				 tail[-2].y == @points[pol1_start].y && @points[pol1_start].y == tail[-1].y
+			if tail[-2].x == @points[pol1_start].x &&
+         @points[pol1_start].x == tail[-1].x or
+				 tail[-2].y == @points[pol1_start].y &&
+         @points[pol1_start].y == tail[-1].y
 
 				 pol1_end_tail -= 1
 			end
-			if tail[-2].x == @points[pol2_end].x && @points[pol2_end].x == tail[-1].x or
-				 tail[-2].y == @points[pol2_end].y && @points[pol2_end].y == tail[-1].y
+			if tail[-2].x == @points[pol2_end].x &&
+         @points[pol2_end].x == tail[-1].x or
+				 tail[-2].y == @points[pol2_end].y &&
+         @points[pol2_end].y == tail[-1].y
 
 				 pol2_end_tail -= 1
 			end
@@ -494,13 +529,17 @@ class Polygon
 		if @points[next_corner(end_edge)] == tail[-1]
 			puts "on_corner tail -1 next_corner(end_edge)" if @debug
 			pol1_start += 1
-			if tail[-2].x == @points[pol1_start].x && @points[pol1_start].x == tail[-1].x or
-				 tail[-2].y == @points[pol1_start].y && @points[pol1_start].y == tail[-1].y
+			if tail[-2].x == @points[pol1_start].x &&
+         @points[pol1_start].x == tail[-1].x or
+				 tail[-2].y == @points[pol1_start].y &&
+         @points[pol1_start].y == tail[-1].y
 
 				 pol1_end_tail -= 1
 			end
-			if tail[-2].x == @points[pol2_end].x && @points[pol2_end].x == tail[-1].x or
-				 tail[-2].y == @points[pol2_end].y && @points[pol2_end].y == tail[-1].y
+			if tail[-2].x == @points[pol2_end].x &&
+         @points[pol2_end].x == tail[-1].x or
+				 tail[-2].y == @points[pol2_end].y &&
+         @points[pol2_end].y == tail[-1].y
 
 				 pol2_end_tail -= 1
 			end
@@ -516,10 +555,14 @@ class Polygon
 		#}}}
 		# }}}
 
-		puts "after: pol1_end=#{pol1_end} pol1_start=#{pol1_start}" if @debug
-		puts "after: pol2_start=#{pol2_start} pol2_end=#{pol2_end}" if @debug
-		puts "after: pol1_start_tail=#{pol1_start_tail} pol1_end_tail=#{pol1_end_tail}" if @debug
-		puts "after: pol2_start_tail=#{pol2_start_tail} pol2_end_tail=#{pol2_end_tail}" if @debug
+    if @debug
+      puts "after: pol1_end=#{pol1_end} pol1_start=#{pol1_start}"
+      puts "after: pol2_start=#{pol2_start} pol2_end=#{pol2_end}"
+      puts "after: pol1_start_tail=#{pol1_start_tail} " +
+        "pol1_end_tail=#{pol1_end_tail}"
+      puts "after: pol2_start_tail=#{pol2_start_tail} " +
+        "pol2_end_tail=#{pol2_end_tail}"
+    end
 
 		# create 2 Polygon, self and other
 		# add start point in pol1 including start_edge
@@ -529,7 +572,8 @@ class Polygon
 		tail.points[pol1_start_tail..pol1_end_tail].each { |p| pol1 << p.dup }
 		tail.points[pol2_start_tail..pol2_end_tail].each { |p| pol2 << p.dup }
 
-		# finish completing pol1 with point following tail where it reaches area on end_edge
+    # finish completing pol1 with point following tail where it reaches area on
+    # end_edge
 		@points[pol1_start...@points.size].each { |p| pol1 << p.dup }
 
 		# close pol2 reversing the area between start_edge and end_edge
@@ -541,39 +585,47 @@ class Polygon
 		return pol1, pol2
 	end#}}}
 
-	def Polygon.load(iostream)
+	def Polygon.load(iostream)#{{{
 		Polygon.new.load(iostream)
-	end
+	end#}}}
 
-	def load(iostream)
+	def load(iostream)#{{{
 		iostream.each_line do |l|
       begin
         next if l =~ /^(#|\s*$)/
       rescue ArgumentError => e
+        # UTF8 encoding mix
         puts "line pasing error '#{e}, ignoring : #{l}"
         next
       end
 
       # Match but not required
 			next if l =~ /Polygon:/
+			if l =~ /closed=true/
+        self.close
+        # stop parsing
+        break
+      end
+
 			self << Coord.load(l)
 		end
 		self
-	end
+	end#}}}
 
-	def dump(iostream)
+	def dump(iostream)#{{{
 		iostream.puts self.to_s
 		self
-	end
+	end#}}}
 
-	def to_s
+	def to_s#{{{
 		s = "Polygon:\n"
 		@points.each_with_index { |p,i| s += "#{i} #{p}\n" }
+    s += "closed=true\n" if @closed
 		s
-	end
+	end#}}}
 
-  # find min and max points
-  def find_min_max(shift_coord=nil)
+  # find min and max points enclosing the polygon
+  def find_min_max(shift_coord=nil)#{{{
     min = Coord.new(-1, -1)
     max = Coord.new(-1, -1)
 		@points.each { |p|
@@ -590,7 +642,6 @@ class Polygon
       if max.y == -1 or max.y < p.y
         max.y = p.y
       end
-
 		}
 
     if shift_coord.nil?
@@ -598,9 +649,9 @@ class Polygon
     else
       return min - shift_coord, max - shift_coord
     end
-  end
+  end#}}}
 
-  # convert polygon to an array of all coordinate x and y
+  # to_a : convert polygon to an flat array of all coordinates x and y#{{{
   def to_a
     a = @points.collect {|p| [p.x, p.y] }.flatten
     if @closed
@@ -608,9 +659,19 @@ class Polygon
       a << @points.first.y
     end
     return a
-  end
+  end#}}}
 
 protected
 	attr_reader :points
 
+  def update_min_max!(p)#{{{
+    # p must be a point of the polygon
+		@max.x = p.x if p.x > @max.x
+		@min.x = p.x if p.x < @min.x or @min.x == -1
+
+		@max.y = p.y if p.y > @max.y
+		@min.y = p.y if p.y < @min.y or @min.y == -1
+
+    self
+  end#}}}
 end

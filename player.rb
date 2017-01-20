@@ -1,5 +1,8 @@
 # encoding: utf-8
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
+#
+# class Player, handling player behavior
+#
 
 class Player#{{{
 	def initialize(window)#{{{
@@ -287,8 +290,8 @@ class Player#{{{
 
 		begin
 			pol1, pol2 = @area.cut(@tail, @tail_start_edge, edge)
-		rescue RuntimeError => e
-			puts "\e[41mRuntimeError\e[0m e=#{e}"
+		rescue PolygonError, RuntimeError => e
+			puts "\e[41mError\e[0m e=#{e}"
 			puts "@tail_end=#{@tail_end} @hit_area=#{@hit_area} @me=#{@me} edge=#{edge}"
 			puts "v1=#{v1}, v2=#{v2}"
 			puts @tail.to_s
