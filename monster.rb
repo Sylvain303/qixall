@@ -1,7 +1,7 @@
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
 # coding: utf-8
 #
-# Game editor only
+# For Game editor only
 #
 
 class Monster#{{{

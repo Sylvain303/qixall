@@ -1,5 +1,9 @@
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
+# coding: utf-8
+#
 # Ascci_Buffer is a 2 dimension Array of Fixnum representing Ascii Char.
+#
+# Usage:
 
 class Ascci_Buffer
 	def initialize(w,h, fill = ' ')

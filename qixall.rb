@@ -10,6 +10,7 @@ require 'polygon'
 require 'area'
 require 'star'
 require 'playground'
+require 'monster'
 
 require 'pry'
 require 'pry-nav'
@@ -33,89 +34,6 @@ ANGLE = {
 
 MONSTER_IMG = "media/img/monster_round_fire.png"
 # }}}
-
-class Monster#{{{
-	def initialize(window)
-		@window = window
-		@image = Gosu::Image.new(@window, MONSTER_IMG, false)
-		@h = @image.height
-		@w = @image.width
-
-		@factor = 0.5
-		@h *= @factor
-		@w *= @factor
-		mid = Coord.new(@w / 2, @h / 2)
-		puts "monster image @w=#{@w}, @h1=#{@h}"
-
-		# velocity
-		@vel = Coord.new(1, 1)
-		@angle = 0.0
-		@rotate = 1.0
-		@border_area = @window.playground.area
-		@min, @max = @border_area.corners
-		@me = Coord.new((@min.x + @max.x) / 2, (@min.y + @max.y) / 2)
-
-		# a surrounding box
-		@b = Box.new(@window, @me - mid, @me + mid)
-	end
-
-	attr_reader :me
-
-	def start(area)
-		@area = area
-		@start = @area[0]
-		@x, @y = @start.x + @image.width, @start.y + @image.height
-		@speed = 4
-		# @angle = rand(360)
-	end
-
-	def draw
-		@image.draw_rot(@me.x, @me.y, ZOrder::Monster, @angle, 0.5, 0.5, @factor, @factor)
-		@window.draw_point(@me)
-	end
-
-	def move
-		@me.x += @vel.x
-		@me.y += @vel.y
-		@b.move_by(@vel)
-		@angle += @rotate
-		if @angle > 360.0
-			@angle = 0.0
-		end
-		if @angle < 0.0
-			@angle = 360.0
-		end
-
-		edge = @border_area.find_nearest_edge(@me.x, @me.y)
-		# @border_area.highlight = edge
-
-		v1, v2 = @border_area.get_edge(edge)
-
-		# collide with edge
-		if v1.x == v2.x # V
-			d = (@me.x - v1.x).abs
-			dir = :vertical
-		else # H
-			d = (@me.y - v1.y).abs
-			dir = :horizontal
-		end
-
-		if d < @h / 2
-			# collision
-			if dir == :vertical
-				velsign = @vel.x < 0 ? 1 : -1
-				@me.x = v1.x + (@w / 2 * velsign)
-				@vel.x = - @vel.x
-			else
-				velsign = @vel.y < 0 ? 1 : -1
-				@me.y = v1.y + (@h / 2 * velsign)
-				@vel.y = - @vel.y
-			end
-		end
-
-		self
-	end
-end#}}}
 
 class Tropedo#{{{
 	def initialize(window, dir)
@@ -146,6 +64,7 @@ class GameWindow < Gosu::Window#{{{
 		@epais = LINEW
 
 		@playground = Playground.new(self)
+    @start_surface = @playground.area.surface
 
 		@monster = Monster.new(self)
 		@monster.start(@playground.area)
@@ -167,8 +86,6 @@ class GameWindow < Gosu::Window#{{{
 	attr_accessor :tail
 
 	def update#{{{
-
-
 		if button_down? Gosu::Button::KbLeft
 			@player.change_dir(:left)
 		end
@@ -215,12 +132,23 @@ class GameWindow < Gosu::Window#{{{
 		@stars.each { |star| star.draw }
 
 		# info
-		@font.draw("mouse pos: #{mouse_x}, #{mouse_y}", 10, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
-		@font.draw("clic: #{@click}", 10, 10 + 1*15, ZOrder::UI, 1.0, 1.0, 0xffffff00)
+		@font.draw("mouse pos: #{mouse_x}, #{mouse_y}", 10, 10, ZOrder::UI, 
+               1.0, 1.0, 0xffffff00)
+		@font.draw("area: #{@playground.area.size}", 230, 10, ZOrder::UI,
+               1.0, 1.0, 0xffffff00)
+
+    percent = 1.0 - (@playground.area.surface / @start_surface)
+		@font.draw("surface: #{@start_surface}", 330, 10, ZOrder::UI,
+               1.0, 1.0, 0xffffff00)
+		@font.draw("percent: #{percent}", 488, 10, ZOrder::UI,
+               1.0, 1.0, 0xffffff00)
+
+    # line 2
+		@font.draw("clic: #{@click}", 10, 10 + 1*15, ZOrder::UI, 
+               1.0, 1.0, 0xffffff00)
+
 		player_info = "player: #{@player.current_dir}, #{@player.next_dir}, #{@player.zone}"
 		@font.draw(player_info, 330, 10 + 1*15, ZOrder::UI, 1.0, 1.0, 0xffffff00)
-		@font.draw("area: #{@playground.area.size}", 230, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
-
 	end#}}}
 
 	def button_down(id)#{{{

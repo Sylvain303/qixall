@@ -1,8 +1,10 @@
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
 # coding: utf-8
 #
-# class Playground
+# class Playground - handle qix playground behavior
 #
+
+require 'area'
 
 class Playground#{{{
   def initialize(window)

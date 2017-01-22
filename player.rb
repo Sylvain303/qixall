@@ -1,5 +1,5 @@
-# encoding: utf-8
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
+# encoding: utf-8
 #
 # class Player, handling player behavior
 #
@@ -36,7 +36,8 @@ class Player#{{{
 
 		# index of the Coord in  @area if the player is on a corner or nil.
 		@on_corner = nil
-		# will hold an Area object representing the :out where the player can move safely
+    # will hold an Area object representing the :out where the player can move
+    # safely, set by the GameWindow when the player starts, aka the playground.
 		@area = nil
 
 		@close_counter = 0
