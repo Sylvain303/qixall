@@ -405,4 +405,15 @@ class TC_Polygon < Test::Unit::TestCase
     min2, max2 = @pol2.find_min_max(min)
 	end# }}}
 
+  def test_surface
+		pol = nil
+		File.open("./polygon_square.txt") { |f| pol = Polygon.load(f) }
+    assert_equal(4, pol.size)
+    a = pol.surface
+    assert_equal(200, a)
+
+		File.open("./polygon_F.txt") { |f| pol = Polygon.load(f) }
+    assert_equal(174, pol.surface)
+  end
+
 end

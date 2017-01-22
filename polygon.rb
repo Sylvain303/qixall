@@ -661,6 +661,22 @@ class Polygon
     return a
   end#}}}
 
+  # surface() : compute polygon surface#{{{
+  # adapted from:
+  # https://fr.wikipedia.org/wiki/Aire_et_centre_de_masse_d%27un_polygone
+  # and
+  # https://openclassrooms.com/forum/sujet/l-aire-d-un-polygone-28783#message-3617386
+  def surface
+    a = 0
+    # slice (size - 2) gives 0..n-1
+    p0 = @points[0]
+    @points[0..@points.size - 2].each_with_index {|p, i|
+      d1 = (p.x - p0.x) * (@points[i+1].y - p0.y)
+      d2 = (@points[i+1].x - p0.x) * (p.y - p0.y)
+      a += d1 - d2
+    }
+    return (a / 2).abs
+  end#}}}
 protected
 	attr_reader :points
 
