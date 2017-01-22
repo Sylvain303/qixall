@@ -32,4 +32,8 @@ class Playground#{{{
     #@area.highlight = edge
     @area.draw
   end
+
+  def get_surface
+    @area.surface
+  end
 end#}}}

@@ -35,6 +35,7 @@ ANGLE = {
 MONSTER_IMG = "media/img/monster_round_fire.png"
 # }}}
 
+# not used Tropedo
 class Tropedo#{{{
 	def initialize(window, dir)
 		@window = window
@@ -54,6 +55,12 @@ class Tropedo#{{{
 
 end#}}}
 
+# Game behavior details #{{{
+# @playground has an Area object which handle polygon behavior
+# @player is generating polygon with its tail and udating @playground when it
+# closes a path.
+#}}}
+
 class GameWindow < Gosu::Window#{{{
 	def initialize#{{{
 		@screen_w = 640
@@ -64,7 +71,7 @@ class GameWindow < Gosu::Window#{{{
 		@epais = LINEW
 
 		@playground = Playground.new(self)
-    @start_surface = @playground.area.surface
+    @start_surface = @playground.get_surface.to_f
 
 		@monster = Monster.new(self)
 		@monster.start(@playground.area)
@@ -137,10 +144,9 @@ class GameWindow < Gosu::Window#{{{
 		@font.draw("area: #{@playground.area.size}", 230, 10, ZOrder::UI,
                1.0, 1.0, 0xffffff00)
 
-    percent = 1.0 - (@playground.area.surface / @start_surface)
 		@font.draw("surface: #{@start_surface}", 330, 10, ZOrder::UI,
                1.0, 1.0, 0xffffff00)
-		@font.draw("percent: #{percent}", 488, 10, ZOrder::UI,
+		@font.draw("percent: #{compute_percent}", 488, 10, ZOrder::UI,
                1.0, 1.0, 0xffffff00)
 
     # line 2
@@ -151,6 +157,11 @@ class GameWindow < Gosu::Window#{{{
 		@font.draw(player_info, 330, 10 + 1*15, ZOrder::UI, 1.0, 1.0, 0xffffff00)
 	end#}}}
 
+  def compute_percent
+    percent = 1.0 - (@playground.get_surface.to_f / @start_surface)
+    format('%.2f', percent * 100.0)
+  end
+
 	def button_down(id)#{{{
 		case id
 		when Gosu::Button::KbEscape
@@ -158,7 +169,8 @@ class GameWindow < Gosu::Window#{{{
 		when Gosu::Button::KbF1
 			read_area(@playground.area, "data/playground*.txt")
 			i = @playground.area.size + rand(@playground.area.size)
-			@player.start(@playground.area, i % @playground.area.size, (i + 1) % @playground.area.size)
+			@player.start(@playground.area, i % @playground.area.size,
+                    (i + 1) % @playground.area.size)
 		when Gosu::Button::MsLeft
 			@click = Coord.new(mouse_x, mouse_y)
 		when Gosu::Button::KbLeftControl, Gosu::Button::KbRightControl
