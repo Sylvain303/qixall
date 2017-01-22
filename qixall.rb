@@ -9,6 +9,7 @@ require 'player'
 require 'polygon'
 require 'area'
 require 'star'
+require 'playground'
 
 require 'pry'
 require 'pry-nav'
@@ -135,34 +136,6 @@ class Tropedo#{{{
 
 end#}}}
 
-class Playground#{{{
-	def initialize(window)
-		@window = window
-		@background_image = Gosu::Image.new(@window, "media/pokemon_2.png", true)
-		#@background_image = Gosu::Image.new(@window, "media/epoc-01.png", true)
-		#@background_image = Gosu::Image.new(@window, "media/monica.png", true)
-
-		# initialize with default playground
-		@area = Area.new(@window)
-		@area.read_file("data/playground0.txt")
-		@tcorner, @bcorner = @area.corners
-		@area.color = 0xFF4dd0bc
-	end
-	attr_reader :area, :tcorner, :bcorner
-
-	def color=(c)
-		@area.color = c
-	end
-
-	def draw
-		@background_image.draw(@tcorner.x, @tcorner.y, ZOrder::Background);
-		## a test to highlight the nearest edge of the mouse pointer
-		#edge = @area.find_nearest_edge(@window.mouse_x, @window.mouse_y)
-		#@area.highlight = edge
-		@area.draw
-	end
-end#}}}
-
 class GameWindow < Gosu::Window#{{{
 	def initialize#{{{
 		@screen_w = 640
@@ -171,7 +144,6 @@ class GameWindow < Gosu::Window#{{{
 		self.caption = "Qixall"
 
 		@epais = LINEW
-		@grid = GRID
 
 		@playground = Playground.new(self)
 
@@ -184,15 +156,14 @@ class GameWindow < Gosu::Window#{{{
 		@font = Gosu::Font.new(self, Gosu::default_font_name, 20)
 		@cursor = Gosu::Image.new(self, "media/Cursor.png", false)
 
-		@area_click = Area.new(self)
+    # used for loading playground as well
 		@area_last_loaded = {}
-		@show_grid = true
 
 		# stars from tutorial…
 		@star_anim = Gosu::Image::load_tiles(self, "media/Star.png", 25, 25, false)
 		@stars = Array.new
 	end#}}}
-	attr_reader :epais, :grid, :screen_h, :screen_w, :playground, :monster
+	attr_reader :epais, :screen_h, :screen_w, :playground, :monster
 	attr_accessor :tail
 
 	def update#{{{
@@ -245,25 +216,11 @@ class GameWindow < Gosu::Window#{{{
 
 		# info
 		@font.draw("mouse pos: #{mouse_x}, #{mouse_y}", 10, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
-		@font.draw("grid: #{@grid}", 470, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
 		@font.draw("clic: #{@click}", 10, 10 + 1*15, ZOrder::UI, 1.0, 1.0, 0xffffff00)
 		player_info = "player: #{@player.current_dir}, #{@player.next_dir}, #{@player.zone}"
 		@font.draw(player_info, 330, 10 + 1*15, ZOrder::UI, 1.0, 1.0, 0xffffff00)
 		@font.draw("area: #{@playground.area.size}", 230, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
 
-		@area_click.draw if @area_click
-
-		if @show_grid
-			# http://www.ruby-doc.org/core-1.9.3/Numeric.html#method-i-step
-			# Vertical
-			@playground.tcorner.x.step(@playground.bcorner.x, @grid) { |i|
-				draw_line(i, @playground.tcorner.y, 0xFFbbbbbb, i, @playground.bcorner.y, 0xFFbbbbbb, ZOrder::Grid, mode=:default)
-			}
-			# Horizontal
-			@playground.tcorner.y.step(@playground.bcorner.y, @grid) { |i|
-				draw_line(@playground.tcorner.x, i, 0xFFbbbbbb, @playground.bcorner.x, i, 0xFFbbbbbb, ZOrder::Grid, mode=:default)
-			}
-		end
 	end#}}}
 
 	def button_down(id)#{{{
@@ -274,52 +231,10 @@ class GameWindow < Gosu::Window#{{{
 			read_area(@playground.area, "data/playground*.txt")
 			i = @playground.area.size + rand(@playground.area.size)
 			@player.start(@playground.area, i % @playground.area.size, (i + 1) % @playground.area.size)
-		when Gosu::Button::KbF2
-			@show_grid = ! @show_grid
-		when Gosu::Button::KbF3
-			@grid += 1
-		when Gosu::Button::KbF4
-			@grid -= 1
 		when Gosu::Button::MsLeft
-			# upon mouse click we are making a area
 			@click = Coord.new(mouse_x, mouse_y)
-			p = @click.snap(@grid)
-			lastp = @area_click.last
-			# check HV line…
-			if @area_click.size == 0 or (lastp and (p.x == lastp.x or p.y == lastp.y))
-				@area_click << p unless @area_click.points.include?(p)
-			end
-			puts "#{p}, click=#{@click}"
-			puts "#{@click} #{@playground.area.inside?(@click.x, @click.y)}"
-		when Gosu::Button::MsRight
-			@area_click.empty!
 		when Gosu::Button::KbLeftControl, Gosu::Button::KbRightControl
 			@player.action(:down)
-		else
-			# some keybord letter
-			case button_id_to_char(id)
-			when 'd'
-				if @area_click.size > 0
-					# dump the clicked area into a file
-					dump_area(@area_click, "data/area")
-				else
-					puts "no tail to dump"
-				end
-			when 'l'
-				# load area
-				begin
-					read_area(@area_click, "data/area*.txt")
-				rescue RuntimeError
-					puts "#{$!} => ok unclosed area"
-				end
-			when '.' # v on bépo
-				# test algorithm of polygon detection
-				if @area_click and @area_click.inside?(mouse_x, mouse_y)
-					puts "inside"
-				else
-					puts "outside"
-				end
-			end
 		end
 	end#}}}
 
@@ -352,23 +267,6 @@ private
 
 		puts "loading: #{@area_last_loaded[area_ref].last}"
 		area_ref.read_file(@area_last_loaded[area_ref].last)
-	end
-
-	def dump_area(area_ref, pattern)
-		n = 0
-		fname = nil
-		found = false
-		max = 30
-		while ! found
-			fname = pattern + n.to_s + '.txt'
-			found = true if ! FileTest.exists?(fname)
-			n += 1
-
-			raise "dump_area loop max reach #{max}" if n > max
-		end
-
-		puts "dump_area	=> #{fname}"
-		File.open(fname, "w") { |f| area_ref.dump(f) }
 	end
 end #}}}
 
