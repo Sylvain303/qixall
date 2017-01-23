@@ -1,7 +1,7 @@
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
 # coding: utf-8
 #
-# For Game editor only
+# Monster class - handle basic monster behavior
 #
 
 class Monster#{{{
@@ -21,11 +21,12 @@ class Monster#{{{
     @vel = Coord.new(1, 1)
     @angle = 0.0
     @rotate = 1.0
+
     @border_area = @window.playground.area
     @min, @max = @border_area.corners
     @me = Coord.new((@min.x + @max.x) / 2, (@min.y + @max.y) / 2)
 
-    # a surrounding box
+    # a surrounding bounding box
     @b = Box.new(@window, @me - mid, @me + mid)
   end
 
@@ -41,7 +42,8 @@ class Monster#{{{
   end
 
   def draw
-    @image.draw_rot(@me.x, @me.y, ZOrder::Monster, @angle, 0.5, 0.5, @factor, @factor)
+    @image.draw_rot(@me.x, @me.y, ZOrder::Monster,
+                    @angle, 0.5, 0.5, @factor, @factor)
     @window.draw_point(@me)
     # draw bounding box
     @b.draw
