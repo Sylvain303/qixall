@@ -296,8 +296,8 @@ class Polygon
 		(old - 1 + @points.size) % @points.size
 	end#}}}
 
-	def get_edge(edge_index)#{{{
-		# return the pair of points forming the edge
+	# get_edge(edge_index) return the pair of points forming the edge#{{{
+	def get_edge(edge_index)
 		nedge = next_corner(edge_index)
 		case edge_dir(edge_index, nedge)
 		when :up, :left
@@ -409,13 +409,13 @@ class Polygon
 		pol1 = Polygon.new
 		pol2 = Polygon.new
 
-		# process of linking the 2 polygon
+		# process of linking the 2 polygons:
 		# 1. add each point of the area from 0 to the point before the tail
 		# 2. add each point of the tail
     # 3. close the area, by adding the point after the tail throught the end of
     #    the area
 		#
-		# the other polygon is build with
+		# the other polygon is build with:
 		# 1. all the tail points
 		# 2. the area points from where the tail ends in reverse order throught
     #    where the tail starts
@@ -439,7 +439,6 @@ class Polygon
 				tail.points.reverse!
 			end
 		end
-
 		# }}}
 
 		pol1_end = start_edge
@@ -461,7 +460,10 @@ class Polygon
         "pol2_end_tail=#{pol2_end_tail}"
     end
 
-		# test on_corner# {{{
+		# test on_corner #{{{
+    # If the tail is started on a corner we skip the corner on copying
+    # into the destination polygon.
+    
 		# start_edge {{{
 		if tail[0] == @points[start_edge]
 			puts "on_corner tail 0 => start_edge" if @debug
@@ -497,16 +499,20 @@ class Polygon
 			end
 		end
 
-		if start_edge !=  end_edge && tail[0] == @points[end_edge]
-			raise "on_corner tail 0 end_edge is it possible??"
-		end
+    # this check is invalid it happens, See unittest.
+		#if start_edge != end_edge && tail[0] == @points[end_edge]
+		#	raise "on_corner tail 0 on end_edge is it possible??"
+		#end
 
-		if start_edge !=  end_edge && @points[next_corner(end_edge)] == tail[0]
-			raise "on_corner tail 0 next_corner(end_edge) is it possible??"
+    # what about this one?
+		if start_edge != end_edge && @points[next_corner(end_edge)] == tail[0]
+			raise "on_corner tail 0 on next_corner(end_edge) is it possible??"
 		end
 		#}}}
 
-		#  end_edge {{{
+		# end_edge {{{
+    # Does the tail arrive on a corner?
+    # the point will be skipped too.
 		if @points[end_edge] == tail[-1]
 			puts "on_corner tail -1 => end_edge" if @debug
 			pol2_end -= 1

@@ -258,6 +258,7 @@ class Player#{{{
 		@tail_start_edge = @area.find_nearest_edge(@me.x, @me.y)
 		@tail << @tail_start
 		@add_point = true
+    puts "me=#{@me} tail_start_edge=#{@tail_start_edge}"
 	end
 
 	def remove_tail
@@ -298,7 +299,6 @@ class Player#{{{
 			puts @tail.to_s
 			return
 		end
-			
 
 		puts @tail.to_s
 		puts pol1.to_s

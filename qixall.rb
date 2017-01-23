@@ -1,9 +1,15 @@
 #vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
 # coding: utf-8
+#
+# Qixall - qix like game engine
+#
 require 'rubygems'
 require 'bundler/setup'
-$:.push('.')
+
 require 'gosu'
+
+# local code
+$:.push('.')
 require 'coord'
 require 'player'
 require 'polygon'
@@ -171,6 +177,7 @@ class GameWindow < Gosu::Window#{{{
 			i = @playground.area.size + rand(@playground.area.size)
 			@player.start(@playground.area, i % @playground.area.size,
                     (i + 1) % @playground.area.size)
+      @monster.start(@playground.area)
 		when Gosu::Button::MsLeft
 			@click = Coord.new(mouse_x, mouse_y)
 		when Gosu::Button::KbLeftControl, Gosu::Button::KbRightControl

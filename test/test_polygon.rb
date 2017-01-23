@@ -63,8 +63,8 @@ class TC_Polygon < Test::Unit::TestCase
 			# fetch first polygon
 			p1.each { |i| seen[p.object_id] = 1 }
 			# test all next polygon
-			(1...pols.size).each do |i| 
-				pols[i].each { |p| 
+			(1...pols.size).each do |i|
+				pols[i].each { |p|
 					if seen[p.object_id]
 						r = false
 						break
@@ -214,7 +214,7 @@ class TC_Polygon < Test::Unit::TestCase
 		n = 0
 		first = nil
 		last = nil
-		pol.each_edge { |v1, v2|  
+		pol.each_edge { |v1, v2|
 			n += 1
 			first = v1 if ! first
 			last = v2
@@ -265,8 +265,8 @@ class TC_Polygon < Test::Unit::TestCase
 		assert_equal(np1_expect, np1.size)
 		assert_equal(np2_expect, np2.size)
 
-		assert(no_alligned_points?(np1), "aligned points np1") 
-		assert(no_alligned_points?(np2), "aligned points np2") 
+		assert(no_alligned_points?(np1), "aligned points np1")
+		assert(no_alligned_points?(np2), "aligned points np2")
 
     # ensure mix and max are also in resulting polygons
     min, max = np1.find_min_max
@@ -296,7 +296,7 @@ class TC_Polygon < Test::Unit::TestCase
 		3 (18,14)
 		FIN
 		# }}}
-		
+
 		# test exception raise for unclosed polygon
 		assert_raise { pol2.cut(t6, start_edge, end_edge) }
 
@@ -326,9 +326,9 @@ class TC_Polygon < Test::Unit::TestCase
 
     assert(after_cut_polygon_are_valid?(pol2, np1, 6, np2, 6))
 # }}}
-		
+
 		# some more test: single aligned cut between to verticaly aligned corner# {{{
-		# we modify pol2 edge 2 
+		# we modify pol2 edge 2
 		pol2[2].x = pol2[6].x
 		pol2[3].x = pol2[6].x
 
@@ -353,7 +353,7 @@ class TC_Polygon < Test::Unit::TestCase
 
     assert(after_cut_polygon_are_valid?(pol2, np1, 10, np2, 4))
 # }}}
-		
+
 		# same edge + no corner# {{{
 		tail = Polygon.new << Coord.new(pol2[6].x, pol2[6].y - 1) <<
               Coord.new(pol2[6].x / 2, pol2[6].y - 1) <<
@@ -366,6 +366,53 @@ class TC_Polygon < Test::Unit::TestCase
 
     assert(after_cut_polygon_are_valid?(pol2, np1, 14, np2, 4))
 # }}}
+
+    # bug closing tail in game {{{
+    playground = File.open('../data/playground_bug.txt') {|f|
+      Polygon.load(f)
+    }
+
+		tail = Polygon.load(StringIO.new(<<-FIN))# {{{
+    Polygon:
+    0 (141,255)
+    1 (141,343)
+    2 (113,343)
+    3 (113,255)
+    FIN
+    #}}}
+    tail_copy = tail.dup
+
+		# @tail_start_edge = @area.find_nearest_edge(@me.x, @me.y)
+		# tail_end=(113,255) @hit_area= @me=(113,255) edge=5
+		# v1=(51,255), v2=(141,255)
+    # the player is on edge 4 a point #5 (orientation change, from :left
+    # to :bottom and start its tail to the bottom
+    #
+    #            |
+    # 6------^---5
+    # |      !   !
+    # |      !   !
+    # |      !   !
+    # |      +---+
+    # |
+    # |
+    # 7------------------------------------8
+		me_start = Coord.new(141,255)
+		start_edge=4
+    me = Coord.new(113,255)
+    end_edge=5
+
+    # test edges share point 5
+		v1, v2 = playground.get_edge(start_edge)
+    v3, v4 = playground.get_edge(end_edge)
+    assert_equal(playground[5], v2)
+    assert_equal(playground[5], me_start)
+    assert_equal(v2, v4)
+
+    assert_nothing_raised {
+      np1, np2 = playground.cut(tail, start_edge, end_edge)
+    }
+    #}}}
 	end# }}}
 
 	def test_to_a# {{{
@@ -397,7 +444,7 @@ class TC_Polygon < Test::Unit::TestCase
 
     max_x = xs.max
     max_y = ys.max
-    
+
     assert_equal(Coord.new(min_x, min_y), min)
     assert_equal(Coord.new(max_x, max_y), max)
 
