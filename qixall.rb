@@ -3,6 +3,10 @@
 #
 # Qixall - qix like game engine
 #
+
+# needs to be at top require, why?
+require 'rmagick'
+
 require 'rubygems'
 require 'bundler/setup'
 
@@ -25,7 +29,7 @@ require 'pry-nav'
 #Debugger.start(:post_mortem => true)
 
 module ZOrder
-  Background, Grid, Lines, Stars, Monster, Player, UI, Mouse = *0..20
+  Background, Grid, Polygon, Lines, Stars, Monster, Player, UI, Mouse = *0..20
 end
 
 # Config# {{{
@@ -83,7 +87,7 @@ class GameWindow < Gosu::Window#{{{
 		@monster.start(@playground.area)
 
 		@player = Player.new(self)
-		@player.start(@playground.area, 0, 3)
+		@player.start(@playground, 0, 3)
 
 		@font = Gosu::Font.new(self, Gosu::default_font_name, 20)
 		@cursor = Gosu::Image.new(self, "media/Cursor.png", false)
@@ -145,7 +149,7 @@ class GameWindow < Gosu::Window#{{{
 		@stars.each { |star| star.draw }
 
 		# info
-		@font.draw("mouse pos: #{mouse_x}, #{mouse_y}", 10, 10, ZOrder::UI, 
+		@font.draw("mouse pos: #{mouse_x}, #{mouse_y}", 10, 10, ZOrder::UI,
                1.0, 1.0, 0xffffff00)
 		@font.draw("area: #{@playground.area.size}", 230, 10, ZOrder::UI,
                1.0, 1.0, 0xffffff00)
@@ -156,7 +160,7 @@ class GameWindow < Gosu::Window#{{{
                1.0, 1.0, 0xffffff00)
 
     # line 2
-		@font.draw("clic: #{@click}", 10, 10 + 1*15, ZOrder::UI, 
+		@font.draw("clic: #{@click}", 10, 10 + 1*15, ZOrder::UI,
                1.0, 1.0, 0xffffff00)
 
 		player_info = "player: #{@player.current_dir}, #{@player.next_dir}, #{@player.zone}"
@@ -175,7 +179,8 @@ class GameWindow < Gosu::Window#{{{
 		when Gosu::Button::KbF1
 			read_area(@playground.area, "data/playground*.txt")
 			i = @playground.area.size + rand(@playground.area.size)
-			@player.start(@playground.area, i % @playground.area.size,
+			@player.start(@playground,
+                    i % @playground.area.size,
                     (i + 1) % @playground.area.size)
       @monster.start(@playground.area)
 		when Gosu::Button::MsLeft

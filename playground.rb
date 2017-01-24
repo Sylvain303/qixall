@@ -19,6 +19,8 @@ class Playground#{{{
     @area.fill = false
     @tcorner, @bcorner = @area.corners
     @area.color = 0xFF4dd0bc
+
+    @filled_area = []
   end
   attr_reader :area, :tcorner, :bcorner
 
@@ -32,9 +34,17 @@ class Playground#{{{
     #edge = @area.find_nearest_edge(@window.mouse_x, @window.mouse_y)
     #@area.highlight = edge
     @area.draw
+    @filled_area.each {|a| a.draw }
   end
 
   def get_surface
+    # we could store the value and convert it to whatever better for the game
     @area.surface
+  end
+
+  # used by the player when he close an area
+  def fill_playground(area)
+    @filled_area << Area.new(@window, area)
+    puts "new area in filled_area\n#{area.to_s}"
   end
 end#}}}

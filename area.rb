@@ -4,15 +4,16 @@
 # class Area: extends Polygon offering graphical rendering
 #
 
+
 # local code
 require 'polygon'
 require 'line'
 
 class Area < Polygon #{{{
-  def initialize(window)#{{{
+  def initialize(window, points=nil)#{{{
     @window = window
     @boxes = []
-    super()
+    super(points)
     @highlight = nil
     @color =  0xFFFF00FF
 
