@@ -1,17 +1,17 @@
 # Qixall
 
-Qixall, a qix like game - opensource - 2D Game - ruby - Gosu
+Qixall, a qix like game engine - opensource - 2D Game - ruby - Gosu
 
 ## LICENSE
 GPL v3
-See [LICENSE.txt](LICENSE.txt)
+See [LICENSE](LICENSE)
 
 
 ## status
-Not working, some primitiv code `coordinate`, `Line`, `Polygon`, and Gosu learnig
+Early draft.
+Some primitiv code are working `coordinate`, `Line`, `Polygon`.
 
 ## Install
-
 Linux tested only.
 
 ### rvm
@@ -49,8 +49,8 @@ ruby qixall.rb
 
 ## Editor
 
-This project includes a game editor, fully opensource and hackable for your own
-needs.
+This project includes a basic game editor, fully opensource and hackable for
+your own needs.
 
 ### Run editor
 
