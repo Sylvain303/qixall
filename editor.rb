@@ -124,14 +124,7 @@ class GameWindow < Gosu::Window#{{{
     @grid.draw
 
     # objects in the editor
-    @elements.each {|e|
-        e.draw
-        if e.kind_of? Area and ! @hide_polygon
-          create_polygon(e).draw(e.min.x + @xoff,
-                                 e.min.y + @yoff,
-                                 ZOrder::Polygon + @zorder_ploygon)
-        end
-    }
+    @elements.each {|e| e.draw }
     @flines.each {|l| l.draw }
 
     # draw in progess line
@@ -341,35 +334,6 @@ private
       end
     end
   end#}}}
-
-  def create_polygon(poly)
-    min, max = poly.find_min_max()
-    p = poly.dup.translate(-min.x, -min.y)
-
-    w, h = max.x - min.x,  max.y - min.y
-
-    #puts "min=#{min}, max=#{max} Magick::Image.new(#{w}, #{h})"
-    #p.to_a.each_with_index {|c, i|
-    #  puts "#{i}: #{c}"
-    #}
-
-    img = Magick::Image.new(w + @epais * 2, h + @epais * 2) {
-      self.background_color = "transparent"
-    }
-
-    gc = Magick::Draw.new
-
-    gc.fill_opacity(0)
-    gc.fill('blue')
-
-    gc.polyline(*p.to_a)
-
-    gc.draw(img)
-
-    image = Gosu::Image.new(img)
-
-    return image
-  end
 end #}}}
 
 window = GameWindow.new

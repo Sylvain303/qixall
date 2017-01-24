@@ -16,6 +16,7 @@ class Playground#{{{
     # initialize with default playground
     @area = Area.new(@window)
     @area.read_file("data/playground0.txt")
+    @area.fill = false
     @tcorner, @bcorner = @area.corners
     @area.color = 0xFF4dd0bc
   end

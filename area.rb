@@ -4,30 +4,35 @@
 # class Area: extends Polygon offering graphical rendering
 #
 
+# local code
 require 'polygon'
 require 'line'
 
 class Area < Polygon #{{{
-  def initialize(window)
+  def initialize(window)#{{{
     @window = window
     @boxes = []
     super()
     @highlight = nil
     @color =  0xFFFF00FF
-  end
-  attr_accessor :highlight, :color
+
+    # store the rmagick fill picture
+    @fill_image = nil
+    # do or dont fill the area
+    @fill = true
+  end#}}}
+  attr_accessor :highlight, :color, :fill
   attr_reader :points
 
-
-  def last=(p)
+  def last=(p)#{{{
     @points[-1] = p
-  end
+  end#}}}
 
-  def last
+  def last#{{{
     @points[-1]
-  end
+  end#}}}
 
-  def draw
+  def draw#{{{
     # draw when only one single point
     # each_edge_with_index will iterate with 2 or more points
     if @points.size == 1
@@ -48,7 +53,15 @@ class Area < Polygon #{{{
         l.draw
       end
     end
-  end
+
+    if closed and @fill
+      # fill with rmagick
+      if @fill_image.nil?
+        @fill_image = create_polygon(self)
+      end
+      @fill_image.draw(@min.x, @min.y, ZOrder::Polygon)
+    end
+  end#}}}
 
   # edge_out() return the symbol of the direction which let the player go inside the area#{{{
   # out mean: near the monster, which is in fact inside the area
@@ -80,7 +93,7 @@ class Area < Polygon #{{{
     end
   end#}}}
 
-  # leave() return a corner index, leaving old, the other corner of the edge given by other
+  # leave() return a corner index, leaving old, the other corner of the edge given by other#{{{
   def leave(old, other)
     # 3, 2 => 0 or 4 if size > 4     0-----------1
     # 2, 3 => 1                      |           |
@@ -99,28 +112,28 @@ class Area < Polygon #{{{
     else
       raise "Area#leave(#{old}, #{other}) p=#{p} n=#{n}"
     end
-  end
+  end#}}}
 
   # merge()
   def merge(area, start_edge, end_edge)
   end
 
-  def load(iostream)
+  def load(iostream)#{{{#{{{
     empty!
     super(iostream)
     close
-  end
+  end#}}}#}}}
 
-  def read_file(filename)
+  def read_file(filename)#{{{
     File.open(filename) {|f| self.load(f) }
     self
-  end
+  end#}}}
 
-  def empty!
+  def empty!#{{{
     @points.clear
     @closed = false
     self
-  end
+  end#}}}
 
   # corners() return the 2 coord top left and bottom right of the current area#{{{
   # see also: Polygon#find_min_max(), which will return the same result, only on
@@ -133,6 +146,35 @@ class Area < Polygon #{{{
        bc = p if ! bc or bc.x < p.x or bc.y < p.y
      end
      return tc, bc
+  end#}}}
+
+  def create_polygon(poly)#{{{
+    min, max = poly.find_min_max()
+    p = poly.dup.translate(-min.x, -min.y)
+
+    w, h = max.x - min.x,  max.y - min.y
+
+    #puts "min=#{min}, max=#{max} Magick::Image.new(#{w}, #{h})"
+    #p.to_a.each_with_index {|c, i|
+    #  puts "#{i}: #{c}"
+    #}
+
+    img = Magick::Image.new(w + @window.epais * 2, h + @window.epais * 2) {
+      self.background_color = "transparent"
+    }
+
+    gc = Magick::Draw.new
+
+    gc.fill_opacity(0)
+    gc.fill('blue')
+
+    gc.polyline(*p.to_a)
+
+    gc.draw(img)
+
+    image = Gosu::Image.new(img)
+
+    return image
   end#}}}
 end#}}}
 
