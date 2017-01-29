@@ -59,7 +59,6 @@ class Polygon
 		self
 	end#}}}
 
-
 	def pop#{{{
 		if @points.size == 0
 			raise PolygonError, "empty polygon"
@@ -134,8 +133,8 @@ class Polygon
 		@points.size
 	end#}}}
 
-	# find_next_edge() return the index of nearest edge in the given motion#{{{
-	# only work with player motion (x or y == 0)
+	# find_next_edge(p, motion) return the index of nearest edge in the given motion#{{{
+	# only work with player orthogonal motion (x or y == 0)
 	#
 	# p Coord: current object position
 	# motion Coord: velocity of the object
@@ -261,7 +260,8 @@ class Polygon
 		return edge
 	end#}}}
 
-	def on_edge(edge, x, y)#{{{
+	# on_edge(edge, x, y) test if point x, y is on edge #{{{
+	def on_edge(edge, x, y)
 		v1 = @points[edge]
 		v2 = @points[next_corner(edge)]
 
@@ -358,7 +358,7 @@ class Polygon
 		n = Coord.new(first.x * factor, first.y * factor)
 		delta = n - first
 
-		# recompute all points
+		# recompute all points, shifted to origin
 		@points.each_with_index {|p, i|
       pol << Coord.new(p.x * factor - delta.x, p.y * factor - delta.y)
     }
@@ -607,12 +607,15 @@ class Polygon
 
       # Match but not required
 			next if l =~ /Polygon:/
+
+      # closing
 			if l =~ /closed=true/
         self.close
         # stop parsing
         break
       end
 
+      # default add as a Coord
 			self << Coord.load(l)
 		end
 		self

@@ -4,14 +4,19 @@
 # class Player, handling player behavior
 #
 
-class Player#{{{
+require 'coord'
+
+class Player
   def initialize(window)#{{{
     @window = window
     @image = Gosu::Image.new(@window, "media/RubyGem.png", false)
+    # store the player position
     @me = Coord.new(0, 0)
+    # will store movement key in @motion
     @current_dir = @next_dir = :none
-    @last_angle = :up
-    @speed = 2
+    @draw_angle = :up
+    # velocity
+    @speed = 3
     # preset motion, corresponding to available player's movement.
     # used as increment in #move()
     @motion = {
@@ -22,6 +27,7 @@ class Player#{{{
       :down  => Coord.new(0, @speed),
     }
 
+    # easy compute Hash
     @opposit_dir = {
       :left  => :right,
       :right => :left,
@@ -29,20 +35,34 @@ class Player#{{{
       :down  => :up,
     }
 
+    # Is the player allowed to go in this direction?
+    # will be checked in change_dir() and set in set_player_liberty
+    @liberty = {
+      :left  => true,
+      :right => true,
+      :up    => true,
+      :down  => true,
+    }
+    # allowed out direction if we are :in
+    @out = []
+
     # Area instance which will hold the trace when the player is outside
     @tail = nil
-    # 2 states variable which hold the on trace :in, safe from Monster, or :out
-    # making a trace
+    # 3 states variable: :in, safe from Monster, or :out making a trace
+    # :go_out, transitive state, will become :out
     @zone = :in
 
     # index of the Coord in @playground.area if the player is on a corner or
     # nil.
     @on_corner = nil
-    # will hold an Area object representing the :out where the player can move
-    # safely, set by the GameWindow when the player starts, aka the playground.
+
+    # @area will hold an Area object representing the :in where the player can
+    # move safely, set by the GameWindow when the player starts, aka the
+    # playground.
     @area = nil
 
-    @close_counter = 0
+    # during move, record that we were stoped by some constraint
+    @stoped = false
   end#}}}
 
   attr_reader :current_dir, :next_dir, :zone
@@ -53,27 +73,29 @@ class Player#{{{
     # shortcut to the area
     @area = playground.area
 
+    # p1 and p2 are two consecutive points index on @area
     @prev = p1
     @next = p2
 
-    set_player_liberty
+    # @delta_edge is the delta between the 2 corners on @area when you are :in
+    @delta_edge = @area[@next] - @area[@prev]
 
-    # start player point, between p1 and p2
+    # start player coordinate, between p1 and p2
     if @delta_edge.x != 0 && @delta_edge.y == 0
       # H
-      @start = Coord.new(@area[@prev].x + @delta_edge.x / 2, @area[@prev].y)
-      if @area.inside?(@start.x, @start.y - 1)
-        @last_angle = :up
+      @me = Coord.new(@area[@prev].x + @delta_edge.x / 2, @area[@prev].y)
+      if @area.inside?(@me.x, @me.y - 1)
+        @draw_angle = :up
       else
-        @last_angle = :down
+        @draw_angle = :down
       end
     elsif @delta_edge.x == 0  && @delta_edge.y != 0
       # V
-      @start = Coord.new(@area[@prev].x, @area[@prev].y + @delta_edge.y / 2)
-      if @area.inside?(@start.x + 1, @start.y)
-        @last_angle = :right
+      @me = Coord.new(@area[@prev].x, @area[@prev].y + @delta_edge.y / 2)
+      if @area.inside?(@me.x + 1, @me.y)
+        @draw_angle = :right
       else
-        @last_angle = :left
+        @draw_angle = :left
       end
     else
       raise "p1=#{p1} p2=#{p2} #{@area[@prev]} #{@area[@next]} @delta_edge=#{@delta_edge}"
@@ -83,23 +105,49 @@ class Player#{{{
     @action_button = false
     @current_dir = @next_dir = :none
 
-    @me = @start.dup
+    # puts "#{@me} delta_edge=#{@delta_edge} p1=#{p1} p2=#{p2} #{@area[@prev]} #{@area[@next]}"
 
-    # puts "#@start delta_edge=#{@delta_edge} p1=#{p1} p2=#{p2} #{@area[@prev]} #{@area[@next]}"
+    set_player_liberty
   end#}}}
 
   def set_player_liberty#{{{
     if @zone == :in
-      # @delta_edge is the delta between each corner on @area when you are :in
+      # reset
+      @liberty.each_key {|k| @liberty[k] = true }
+
       @delta_edge = @area[@next] - @area[@prev]
       @x_min = @delta_edge.x < 0 ? @area[@next].x : @area[@prev].x
       @y_min = @delta_edge.y < 0 ? @area[@next].y : @area[@prev].y
       @x_max = @delta_edge.x < 0 ? @area[@prev].x : @area[@next].x
       @y_max = @delta_edge.y < 0 ? @area[@prev].y : @area[@next].y
+
+      # test where the player can go :out
+      if ! @on_corner
+        out_dir = @area.edge_out(@prev, @next)
+        # needs button to goes out see change_dir()
+        @liberty[out_dir] = false
+        @liberty[@opposit_dir[out_dir]] = false
+        @out = [ out_dir ]
+      else
+        # only 2 directions on corner, go on edge
+        dir_n = @area.edge_leaving_dir(@on_corner, @next)
+        dir_p = @area.edge_leaving_dir(@on_corner, @prev)
+
+        @liberty[@opposit_dir[dir_n]] = false
+        @liberty[@opposit_dir[dir_p]] = false
+
+        if @area.rentrant_corner?(@on_corner)
+          # you can't get out from a rentrant corner
+          @out = []
+        else
+          @out = [@opposit_dir[dir_n], @opposit_dir[dir_p]]
+        end
+      end
     else
       # out
       @delta_edge = nil
       @x_min = @y_min = @x_max = @y_max = nil
+
     end
 
     # puts "x_min=#{@x_min}"
@@ -108,7 +156,7 @@ class Player#{{{
     # puts "y_max=#{@y_max}"
   end#}}}
 
-  def action(button)
+  def action(button)#{{{
     case button
     when :down
       @action_button = true
@@ -119,18 +167,21 @@ class Player#{{{
       end
       @action_button = false
     end
-  end
+  end#}}}
 
-  def horizontal?(dir)
+  def horizontal?(dir)#{{{
     dir == :left or dir == :right
-  end
+  end#}}}
 
-  def vertical?(dir)
+  def vertical?(dir)#{{{
     dir == :up or dir == :down
-  end
+  end#}}}
 
-
-  def change_dir(new_dir)#{{{
+  # change_dir(new_dir) : called by Window.update, at each tick {{{
+  # change @next_dir if authorized.
+  # new_dir is a symbol :up, :down, :left, :right
+  #
+  def change_dir(new_dir)
     case @zone
     when :in
       #puts ":in delta_edge=#{@delta_edge} new_dir=#{new_dir} action_button=#{@action_button} @on_corner=#{@on_corner}"
@@ -139,7 +190,8 @@ class Player#{{{
          ((new_dir == :right or new_dir == :left) && @delta_edge.x != 0) )
 
         # player has liberty to move on the line
-        # if we are on corner we have 2 liberty @delta_edge.x && @delta_edge.y != 0
+        # if we are on corner we have 2 liberty:
+        #   @delta_edge.x && @delta_edge.y != 0
         #puts "player has liberty"
         @next_dir = new_dir
       elsif @action_button
@@ -178,16 +230,28 @@ class Player#{{{
       if ! @action_button
         @rewind = true
       else
+        # out and going…
+
         # puts "new_dir=#{new_dir} @current_dir=#{@current_dir} @opposit_dir[@current_dir]=#{@opposit_dir[@current_dir]}"
-        if ((vertical?(@current_dir) and vertical?(new_dir)) or
+        if (  (vertical?(@current_dir) and vertical?(new_dir)) or
             (horizontal?(@current_dir) and horizontal?(new_dir)) )
+
           # same dir, ok no more point
           @next_dir = new_dir
         else
+          # we changed the dir, so we add a new point
           @next_dir = new_dir
           @add_point = true
         end
       end
+
+      if hit_tail?
+        # we are going to reach our tail and we need to stop
+        stop
+      end
+      #if @next_dir != :none
+      #  highlight_edge
+      #end
     else
       puts "skiped: unknown zone #{@zone}"
     end
@@ -212,7 +276,6 @@ class Player#{{{
         break
       end
 
-      puts "rewind here"
       if @tail.size == 0
         @zone = :in
         remove_tail
@@ -254,6 +317,12 @@ class Player#{{{
     set_player_liberty
   end#}}}
 
+  # create_tail : before the move, create data sturcture #{{{
+  # steps:
+  #  - change_dir set @zone at :go_out
+  #  - move will call check_move
+  #  - check_move will call create_tail
+  #  - increase_move will be called after
   def create_tail
     puts "create_tail"
     @rewind = false
@@ -263,16 +332,16 @@ class Player#{{{
     @tail << @tail_start
     @add_point = true
     puts "me=#{@me} tail_start_edge=#{@tail_start_edge}"
-  end
+  end#}}}
 
-  def remove_tail
+  def remove_tail#{{{
     puts "remove_tail"
     @tail = nil
     @tail_start = nil
     @tail_start_edge = nil
     @add_point = false
     @rewind = false
-  end
+  end#}}}
 
   # so we were :out and finaly reach some other edge
   def close_area#{{{
@@ -327,30 +396,42 @@ class Player#{{{
     remove_tail
   end#}}}
 
-  def stop
+  def stop#{{{
+    @disabled_dir = @current_dir
     puts "STOP player, you can't move more"
     @current_dir = @next_dir = :none
-  end
+    @stoped = true
+  end#}}}
 
-  # moving:
+  # move()#{{{
   #
-  # pushing down the action button (See qixall.rb) Player.action(:down) is called
-  #  the states of the action button is saved in @action_button = true
-  # during the update loop in GameWindow.update() player direction buttons are checked
+  # player's behavior
+  #
+  # The action button Player.action(:down) allow the player to go :out.
+  # If you release the button the player will rewind on its tail.
+  # The states of the action button is saved in @action_button = true.
+  # During the update loop in GameWindow.update() player direction buttons are
+  # checked:
   #  => calling the related Player.change_dir()
-  #     the goal of change_dir() is to validate the change of direction depending on the context
-  #  1. moving on the @area :in
+  #     the goal of change_dir() is to validate the change of direction
+  #     depending on the context.
+  # Move algorithm:
+  #  1. moving on the @area :in, player is allowed to move only on the polygon
   #  2. geting ouside :out and creating the @tail
   #
-  #
-  #
-  def move#{{{
-    if check_move
+  #  check_move? -> constrains the move if any rules apply
+  #  increase_move if allowed -> the player position is increased
+  #  collide -> after the move, check if we hit something
+  #  @current_dir is updated with @next_dir (previously set in change_dir())
+  #  @next_dir is reset (needed to keep holding the button)
+  #  If :out and some change in the direction, add a point to the tail.
+  def move
+    if check_move?
       increase_move
     end
     collide
 
-    # user must keep moving holding the key down
+    # user must keep holding the direction key down to continue moving
     @current_dir = @next_dir
     @next_dir = :none
 
@@ -362,8 +443,9 @@ class Player#{{{
         # update last point of the tail with the player position
         # when you come back on the tail you can reach the last point
         if @tail.size > 2 and @tail[-2] == @me
-          # in this case, we change the @current_dir so a new point will be added.
-          @current_dir = @tail.edge_dir(-3, -2)
+          # in this case, we change the @current_dir so a new point will be
+          # added.
+          @current_dir = @tail.edge_dir(start_edge=-3, end_edge=-2)
           @tail.pop
         end
         @tail.last = @me.dup
@@ -371,7 +453,7 @@ class Player#{{{
     end
   end#}}}
 
-  def check_move #{{{
+  def check_move? #{{{
     if @rewind
       return true
     end
@@ -385,25 +467,29 @@ class Player#{{{
       return false
     end
 
+    # we have some constrained move (tail collide or :in constraint)
+
     true
   end#}}}
 
-  def increase_move
+  def increase_move#{{{
     if @rewind
       rewind
     else
       @me.x += @motion[@next_dir].x
       @me.y += @motion[@next_dir].y
 
-      @last_angle = @next_dir
+      @draw_angle = @next_dir
     end
-  end
+  end#}}}
 
-  # collide() search what the player will collide if he's continue going in the same direction
-  # currently only highlight line of area, the playground or the tail the one which come first
-  def collide#{{{
+  # collide() search what the player will collide if he's continue going#{{{
+  # in the same direction.
+  def collide
     # overflow
-    if @me.x > @window.screen_w or @me.y > @window.screen_h or @me.x < 0 or @me.y < 0
+    if @me.x > @window.screen_w or
+      @me.y > @window.screen_h or
+      @me.x < 0 or @me.y < 0
       raise "player HITs window's limit: #{@me}"
     end
 
@@ -419,13 +505,13 @@ class Player#{{{
       if @on_corner
         # the player leave the corner, @on_corner eval true
         if ! @area[@on_corner].is?(@me.x, @me.y)
-          puts "leaving corner #{@on_corner}"
+          #puts "leaving corner #{@on_corner}"
           # so we have left @on_corner and we are going to @prev or @next
           if @area[@prev].x - @me.x != 0 && @area[@prev].y - @me.y != 0
-            puts "leaving prev = #{@prev}"
+            #puts "leaving prev = #{@prev}"
             @prev = @on_corner
           elsif @area[@next].x - @me.x != 0 && @area[@next].y - @me.y != 0
-            puts "leaving next = #{@next}"
+            #puts "leaving next = #{@next}"
             @next = @on_corner
           else
             # it seems we are not on @prev nor on @next
@@ -446,11 +532,11 @@ class Player#{{{
       end
     when :out
       # player must stay inside the area
-      # this mean that we were out and now reach the border
+      # if we are no more inside, this mean that we are now reaching
+      # the border
       inside = @area.inside?(@me.x, @me.y, match_edge = false)
       if ! inside
         close_area
-
         @zone = :in
         @current_dir = @next_dir = :none
       end
@@ -461,7 +547,33 @@ class Player#{{{
     set_player_liberty
   end#}}}
 
-  def highlight_edge#{{{
+  # hit_tail?(distance=4) : only call when outside and a tail exists.
+  def hit_tail?(distance=4)
+    if @next_dir == :none
+      return false
+    end
+
+    edge = @tail.find_next_edge(@me, @motion[@next_dir])
+    if edge
+      if vertical?(@next_dir)
+        d_tail = (@tail[edge].y - @me.y).abs
+      else
+        d_tail = (@tail[edge].x - @me.x).abs
+      end
+      puts "hit_tail? #{edge} @next_dir=#{@next_dir} d_tail=#{d_tail} #{@tail[edge]} #{@me}"
+
+      if d_tail <= distance
+        return true
+      end
+    end
+
+    return false
+  end
+
+  # highlight_edge() find @area or @tail that we could hit in our direction#{{{
+  # Usage: if @next_dir != :none and @zone == :out call the method.
+  # Example un change_dir() or collide() (not sure)
+  def highlight_edge
     hit_area = @area.find_next_edge(@me, @motion[@next_dir])
     hit_tail = @tail.find_next_edge(@me, @motion[@next_dir])
 
@@ -481,7 +593,6 @@ class Player#{{{
       if d_tail <= 0
         # stop
         puts "tail hit!"
-
       end
 
       if d_tail < d_area
@@ -500,12 +611,12 @@ class Player#{{{
     ref.highlight = hit
   end#}}}
 
-  def draw
-    @image.draw_rot(@me.x, @me.y, ZOrder::Player, ANGLE[@last_angle])
+  def draw#{{{
+    @image.draw_rot(@me.x, @me.y, ZOrder::Player, ANGLE[@draw_angle])
     @tail.draw if @tail
-  end
+  end#}}}
 
-  def puts_info
+  def puts_info#{{{
     puts "on_corner=#{@on_corner} @delta_edge=#{@delta_edge} cur=#{@me} prev=#{@prev}#{@area[@prev]} next=#{@next}#{@area[@next]}"
-  end
-end #}}}
+  end#}}}
+end

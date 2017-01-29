@@ -87,6 +87,7 @@ class GameWindow < Gosu::Window#{{{
 		@monster.start(@playground.area)
 
 		@player = Player.new(self)
+    # start between corner 0 and 3 (left)
 		@player.start(@playground, 0, 3)
 
 		@font = Gosu::Font.new(self, Gosu::default_font_name, 20)

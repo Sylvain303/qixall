@@ -20,8 +20,8 @@ class Ascci_Buffer
 	end
 
 	def []=(x,y, v)
-		raise "out of range" if x < 0 or x >= @width
-		raise "out of range" if y < 0 or y >= @height
+		raise "out of range x=#{x} width=#@width" if x < 0 or x >= @width
+		raise "out of range y=#{y} height=#@height" if y < 0 or y >= @height
 		if v.kind_of? String
 			v.each_byte { |c| 
 				case self[x,y]

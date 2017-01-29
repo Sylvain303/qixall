@@ -1,0 +1,19 @@
+# tail example which almost collide
+# point 4 is at 1 pixel from reaching edge 0
+#
+#             3-------2                                                           
+#             |       |                                                           
+#             |       |                                                           
+#             |       |                                                           
+#             |       |                                                           
+#             |       |                                                           
+#             |       |                                                           
+#             |       |                                                           
+#             4       |                                                           
+#  0----------------- 1  
+Polygon:
+0 (51,241)
+1 (241,241)
+2 (241,151)
+3 (161,151)
+4 (161,240)

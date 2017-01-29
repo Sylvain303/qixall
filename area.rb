@@ -1,8 +1,10 @@
 # vim: set fdm=marker ts=2 sw=2 shellslash commentstring=#%s:
 # coding: utf-8
 #
-# class Area: extends Polygon offering graphical rendering
+# class Area: extends Polygon offering graphical rendering and games related
+# methods
 #
+# methods related to interaction with player and monster should be here.
 
 
 # local code
@@ -64,7 +66,7 @@ class Area < Polygon #{{{
     end
   end#}}}
 
-  # edge_out() return the symbol of the direction which let the player go inside the area#{{{
+  # edge_out(i1, i2) return the symbol of the direction which let the player go inside the area#{{{
   # out mean: near the monster, which is in fact inside the area
   def edge_out(i1, i2)
     d = @points[i1] - @points[i2]
@@ -94,7 +96,7 @@ class Area < Polygon #{{{
     end
   end#}}}
 
-  # leave() return a corner index, leaving old, the other corner of the edge given by other#{{{
+  # leave(old, other) returns the new index, leaving old based on the other corner #{{{
   def leave(old, other)
     # 3, 2 => 0 or 4 if size > 4     0-----------1
     # 2, 3 => 1                      |           |
@@ -113,6 +115,52 @@ class Area < Polygon #{{{
     else
       raise "Area#leave(#{old}, #{other}) p=#{p} n=#{n}"
     end
+  end#}}}
+
+  # edge_leaving_dir(corner, other) given corner and other, return the direction of the leaving {{{
+  # edge from the corner to other.
+  def edge_leaving_dir(corner, other)
+    c, o = @points[corner], @points[other]
+    l = o - c
+    case
+    when (l.x == 0 and l.y > 0)
+      return :down
+    when (l.x == 0 and l.y < 0)
+      return :up
+    when (l.y == 0 and l.x > 0)
+      return :right
+    when (l.y == 0 and l.x < 0)
+      return :left
+    end
+  end#}}}
+
+  # rentrant_corner?(corner) eval if the corner allow out or not {{{
+  def rentrant_corner?(corner)
+    # an edge is numbered by its corner and the next in its polygon's coord
+    # list.
+    # A corner is rentrant if its out direction is the same as the previous edge
+    # leaving direction.
+    #
+    # 0:
+    # 1:       4--- 5
+    # 2:       |    |
+    # 3:       |    |
+    # 4:       |    |
+    # 5:       |    |
+    # 6:  2--- 3    6--- 7
+    # 7:  |              |
+    # 8:  |              |
+    # 9:  |              |
+    #10:  |              |
+    #11:  1----0    9----8
+    #12:       |    |
+    #13:       |    |
+    #14:       |    |
+    #15:       |    |
+    #16:      11----0
+    p, n = prev_corner(corner), next_corner(corner)
+    dir_p, dir_out = edge_leaving_dir(corner, p), edge_out(corner, n)
+    return dir_p == dir_out
   end#}}}
 
   # merge()
